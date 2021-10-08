@@ -1,15 +1,13 @@
-# Basic Sample Hardhat Project
+# An implementation of the 15 puzzle game in Fe
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+This is work in progress code for an upcoming bug bounty challenge for Fe. It uses an early version of the upcoming Fe support for [hardhat](https://hardhat.org/) as well as a [custom build of the Fe compiler](https://github.com/cburgdorf/fe/tree/christoph/puzzle-build)
 
-Try running some of the following tasks:
+# How to run
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+1. Create a custom Fe binary using [this branch](https://github.com/cburgdorf/fe/tree/christoph/puzzle-build)
+
+2. Change the path in `fe_path_name` to the path to the local binary
+
+3. Run `npx hardhat test`
+
+4. Profit 🎉
