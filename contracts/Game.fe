@@ -89,3 +89,26 @@ contract Game:
             if val == num:
                 return true
         return false
+
+
+struct AlreadyLocked:
+    pass
+
+struct ClaimLock:
+    claimer: address
+    valid_until_block: u256
+
+const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
+
+contract BountyRegistry:
+
+    lock: ClaimLock
+
+    pub fn lock(self):
+        if not self.is_locked():
+            self.lock = ClaimLock(claimer=msg.sender, valid_until_block=block.number+LOCK_PERIOD_IN_BLOCKS)
+        else:
+            revert AlreadyLocked()
+
+    pub fn is_locked(self) -> bool:
+        return self.lock.valid_until_block >= block.number

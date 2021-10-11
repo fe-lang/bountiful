@@ -1,6 +1,16 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+async function mineBlocks(blockNumber) {
+  while (blockNumber > 0) {
+    blockNumber--;
+    await hre.network.provider.request({
+      method: "evm_mine",
+      params: [],
+    });
+  }
+}
+
 describe("Game", function () {
   it("Should go in winning state", async function () {
     const Game = await ethers.getContractFactory("Game");
@@ -13,5 +23,41 @@ describe("Game", function () {
     await game.move_field(15);
 
     expect(await game.callStatic.is_winning_state()).to.equal(true);
+  });
+});
+
+describe("BountyRegistry", function () {
+  it("Should initially be unlocked", async function () {
+    const BountyRegistry = await ethers.getContractFactory("BountyRegistry");
+    const registry = await BountyRegistry.deploy();
+    await registry.deployed();
+
+    expect(await registry.callStatic.is_locked()).to.equal(false);
+  });
+
+  it("Should claim lock", async function () {
+    const BountyRegistry = await ethers.getContractFactory("BountyRegistry");
+    const registry = await BountyRegistry.deploy();
+    await registry.deployed();
+
+    expect(await registry.callStatic.is_locked()).to.equal(false);
+
+    await registry.lock();
+
+    expect(await registry.callStatic.is_locked()).to.equal(true);
+  });
+
+  it("Should release lock after timeout", async function () {
+    const BountyRegistry = await ethers.getContractFactory("BountyRegistry");
+    const registry = await BountyRegistry.deploy();
+    await registry.deployed();
+
+    await registry.lock();
+
+    expect(await registry.callStatic.is_locked()).to.equal(true);
+
+    await mineBlocks(1001);
+
+    expect(await registry.callStatic.is_locked()).to.equal(false);
   });
 });
