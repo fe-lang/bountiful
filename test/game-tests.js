@@ -31,12 +31,12 @@ describe("Game", function () {
 
     const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
     await game.move_field(15);
 
-    expect(await game.callStatic.is_winning_state()).to.equal(true);
+    expect(await game.callStatic.is_solved()).to.equal(true);
   });
 });
 
@@ -142,11 +142,11 @@ describe("BountyRegistry", function () {
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
     await registry.lock();
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
     await game.move_field(15);
-    expect(await game.callStatic.is_winning_state()).to.equal(true);
+    expect(await game.callStatic.is_solved()).to.equal(true);
     // Claim bounty
     await registry.claim(game.address);
 
@@ -163,11 +163,11 @@ describe("BountyRegistry", function () {
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
     await registry.lock();
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
     await game.move_field(15);
-    expect(await game.callStatic.is_winning_state()).to.equal(true);
+    expect(await game.callStatic.is_solved()).to.equal(true);
     // Admin can't claim as he doesn't have the lock
     await expect(registry.connect(admin).claim(game.address)).to.be.reverted;
   });
@@ -182,11 +182,11 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
     await game.move_field(15);
-    expect(await game.callStatic.is_winning_state()).to.equal(true);
+    expect(await game.callStatic.is_solved()).to.equal(true);
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
 
@@ -201,11 +201,11 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     await registry.lock();
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
     await game.move_field(15);
-    expect(await game.callStatic.is_winning_state()).to.equal(true);
+    expect(await game.callStatic.is_solved()).to.equal(true);
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
 
@@ -222,7 +222,7 @@ describe("BountyRegistry", function () {
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
     await registry.lock();
-    expect(await game.callStatic.is_winning_state()).to.equal(false);
+    expect(await game.callStatic.is_solved()).to.equal(false);
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
 

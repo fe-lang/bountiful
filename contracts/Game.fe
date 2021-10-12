@@ -42,7 +42,7 @@ contract Game:
     pub fn get_board(self) -> u256[16]:
         return self.board.to_mem()
 
-    pub fn is_winning_state(self) -> bool:
+    pub fn is_solved(self) -> bool:
         let index: u256 = 0
         let current_board: u256[16] = self.board.to_mem()
         # Workaround for: https://github.com/ethereum/fe/issues/528
@@ -152,7 +152,7 @@ contract BountyRegistry:
             revert InvalidClaim()
         else:
             let puzzle: Game = Game(challenge)
-            if puzzle.is_winning_state():
+            if puzzle.is_solved():
                 pass
                 # TODO pay
             else:
