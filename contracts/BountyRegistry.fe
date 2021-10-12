@@ -46,15 +46,13 @@ contract BountyRegistry:
         return self.lock.valid_until_block >= block.number
 
     pub fn register_challenge(self, challenge: address):
-        if msg.sender != self.admin:
-            revert OnlyAdmin()
-        else:
-            self.open_challenges[challenge] = true
+        self.validate_is_admin()
+        self.open_challenges[challenge] = true
 
     pub fn remove_challenge(self, challenge: address):
-        if msg.sender != self.admin:
-            revert OnlyAdmin()
-        elif self.is_locked():
+        self.validate_is_admin()
+
+        if self.is_locked():
             revert AlreadyLocked()
         else:
             self.open_challenges[challenge] = false
@@ -82,3 +80,7 @@ contract BountyRegistry:
         # TODO: Admin should be allowed to withdraw funds if there's no lock in progress
         # This would be used to migrate to a new bounty registry
         pass
+
+    fn validate_is_admin(self):
+        if msg.sender != self.admin:
+            revert OnlyAdmin()
