@@ -94,6 +94,12 @@ contract Game:
 struct AlreadyLocked:
     pass
 
+struct InvalidClaim:
+    pass
+
+struct OnlyAdmin:
+    pass
+
 struct ClaimLock:
     claimer: address
     valid_until_block: u256
@@ -103,12 +109,56 @@ const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
 contract BountyRegistry:
 
     lock: ClaimLock
+    open_challenges: Map<address, bool>
+    admin: address
+
+    pub fn __init__(self, admin: address):
+        self.admin = admin
 
     pub fn lock(self):
         if not self.is_locked():
+            # Transfer WETH into this contract and revert if that fails
             self.lock = ClaimLock(claimer=msg.sender, valid_until_block=block.number+LOCK_PERIOD_IN_BLOCKS)
         else:
             revert AlreadyLocked()
 
     pub fn is_locked(self) -> bool:
         return self.lock.valid_until_block >= block.number
+
+    pub fn register_challenge(self, challenge: address):
+        if msg.sender != self.admin:
+            revert OnlyAdmin()
+        else:
+            self.open_challenges[challenge] = true
+
+    pub fn remove_challenge(self, challenge: address):
+        if msg.sender != self.admin:
+            revert OnlyAdmin()
+        elif self.is_locked():
+            revert AlreadyLocked()
+        else:
+            self.open_challenges[challenge] = false
+
+
+    pub fn is_open_challenge(self, challenge: address) -> bool:
+        return self.open_challenges[challenge]
+
+    pub fn claim(self, challenge: address):
+        if not self.is_locked():
+            revert InvalidClaim()
+        elif not self.open_challenges[challenge]:
+            revert InvalidClaim()
+        elif self.lock.claimer != msg.sender:
+            revert InvalidClaim()
+        else:
+            let puzzle: Game = Game(challenge)
+            if puzzle.is_winning_state():
+                pass
+                # TODO pay
+            else:
+                revert InvalidClaim()
+
+    pub fn withdraw():
+        # TODO: Admin should be allowed to withdraw funds if there's no lock in progress
+        # This would be used to migrate to a new bounty registry
+        pass
