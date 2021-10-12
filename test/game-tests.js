@@ -1,6 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+const ONE_ETH = ethers.utils.parseEther("1.0");
+
 async function mineBlocks(blockNumber) {
   while (blockNumber > 0) {
     blockNumber--;
@@ -47,12 +49,20 @@ describe("BountyRegistry", function () {
     expect(await registry.callStatic.is_locked()).to.equal(false);
   });
 
-  it("Should claim lock", async function () {
+  it("Should revert when trying to lock without minimum deposit", async function () {
     [registry, eric, admin] = await deployRegistry()
 
     expect(await registry.callStatic.is_locked()).to.equal(false);
 
-    await registry.lock();
+    await expect(registry.lock()).to.be.reverted;
+  });
+
+  it("Should lock", async function () {
+    [registry, eric, admin] = await deployRegistry()
+
+    expect(await registry.callStatic.is_locked()).to.equal(false);
+
+    await registry.lock({value: ONE_ETH });
 
     expect(await registry.callStatic.is_locked()).to.equal(true);
   });
@@ -60,7 +70,7 @@ describe("BountyRegistry", function () {
   it("Should release lock after timeout", async function () {
     [registry, eric, admin] = await deployRegistry()
 
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
 
     expect(await registry.callStatic.is_locked()).to.equal(true);
 
@@ -112,7 +122,7 @@ describe("BountyRegistry", function () {
 
     expect(await registry.callStatic.is_open_challenge(challenge)).to.equal(true);
 
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
 
     await expect(registry.connect(admin).remove_challenge(challenge)).to.be.reverted;
   });
@@ -141,7 +151,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
@@ -162,7 +172,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
@@ -200,7 +210,7 @@ describe("BountyRegistry", function () {
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
 
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
@@ -221,7 +231,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
-    await registry.lock();
+    await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.equal(false);
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
