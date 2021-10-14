@@ -75,10 +75,14 @@ contract BountyRegistry:
             else:
                 revert InvalidClaim()
 
-    pub fn withdraw():
-        # TODO: Admin should be allowed to withdraw funds if there's no lock in progress
+    pub fn withdraw(self):
+        # Admin should be allowed to withdraw funds if there's no lock in progress
         # This would be used to migrate to a new bounty registry
-        pass
+        self.validate_is_admin()
+        if self.is_locked():
+            revert AlreadyLocked()
+        else:
+            send_value(msg.sender, balance())
 
     fn validate_is_admin(self):
         if msg.sender != self.admin:

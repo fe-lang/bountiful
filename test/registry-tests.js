@@ -243,4 +243,43 @@ describe("BountyRegistry", function () {
 
   });
 
+  it("Should allow admin to withdraw funds when not locked", async function () {
+    [registry, eric, admin] = await deployRegistry()
+
+    let ten_eth = ethers.utils.parseEther("10");
+    let zero_eth = ethers.utils.parseEther("0")
+    //Let's give the registry some prize money
+    await admin.sendTransaction({
+      to: registry.address,
+      value: ten_eth
+    })
+
+    let admin_balance = await registry.provider.getBalance(admin.address);
+    expect(await registry.provider.getBalance(registry.address)).to.equal(ten_eth);
+
+    await registry.connect(admin).withdraw();
+
+    expect(await registry.provider.getBalance(registry.address)).to.equal(zero_eth);
+    let new_admin_balance = await registry.provider.getBalance(admin.address);
+    expect(new_admin_balance.gte(admin_balance.add(ethers.utils.parseEther("9.9")))).to.be.true;
+  });
+
+  it("Should revert if admin tries to withdraw when platform is locked", async function () {
+    [registry, eric, admin] = await deployRegistry()
+    // Deploy challenge
+    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+
+    await registry.connect(admin).register_challenge(game.address);
+    expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
+    await registry.lock({value: ONE_ETH });
+
+    await expect(registry.connect(admin).withdraw()).to.be.reverted;
+  });
+
+  it("Should revert if non-admin tries to withdraw funds", async function () {
+    [registry, eric, admin] = await deployRegistry()
+
+    await expect(registry.connect(eric).withdraw()).to.be.reverted;
+  });
+
 });
