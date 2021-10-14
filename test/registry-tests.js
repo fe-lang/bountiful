@@ -135,9 +135,23 @@ describe("BountyRegistry", function () {
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
 
+    //Let's give the registry some prize money
+    await admin.sendTransaction({
+      to: registry.address,
+      value: ethers.utils.parseEther("10")
+    })
+
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.equal(true);
+
+    let eric_initial_balance = await registry.provider.getBalance(eric.address);
+    expect(await registry.provider.getBalance(registry.address)).to.equal(ethers.utils.parseEther("10"));
     await registry.lock({value: ONE_ETH });
+    let eric_new_balance = await registry.provider.getBalance(eric.address);
+
+    // It doesn't match exactly. Probably because of what is lost to tx fees
+    expect(eric_new_balance.lte(eric_initial_balance.sub(ONE_ETH))).to.be.true;
+    expect(await registry.provider.getBalance(registry.address)).to.equal(ethers.utils.parseEther("11"));
     expect(await game.callStatic.is_solved()).to.equal(false);
 
     // Make winning move
@@ -146,6 +160,11 @@ describe("BountyRegistry", function () {
     // Claim bounty
     await registry.claim(game.address);
 
+    expect(await registry.provider.getBalance(registry.address)).to.equal(0);
+    let eric_latest_balance = await registry.provider.getBalance(eric.address);
+
+    // It doesn't match exactly. Probably because of what is lost to tx fees
+    expect(eric_latest_balance.gte(eric_initial_balance.add(ethers.utils.parseEther("9.9")))).to.be.true;
   });
 
   it("Should revert if random person tries to claim bounty", async function () {

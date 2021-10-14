@@ -71,8 +71,7 @@ contract BountyRegistry:
         else:
             let puzzle: ISolvable = ISolvable(challenge)
             if puzzle.is_solved():
-                pass
-                # TODO pay
+                send_value(msg.sender, balance())
             else:
                 revert InvalidClaim()
 
