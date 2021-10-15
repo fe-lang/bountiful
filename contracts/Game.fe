@@ -1,3 +1,9 @@
+# Poor man's interface
+contract ILockValidator:
+
+    pub fn validate_owns_lock(self, owner: address):
+        revert
+
 struct InvalidIndex:
     pass
 
@@ -15,10 +21,12 @@ const INVALID_FIELD_MARKER: u256 = 666
 
 contract Game:
 
+    lock_validator: ILockValidator
     board: u256[16]
     moves: Map<u256, u256[4]>
 
-    pub fn __init__(self, board: u256[16]):
+    pub fn __init__(self, lock_validator: address, board: u256[16]):
+        self.lock_validator = ILockValidator(lock_validator)
         self.board = board
         # Map each empty slot to a list of possible moves
         # It would be nice to have fixed-size maps that work with `const` (baked into code)
@@ -54,6 +62,8 @@ contract Game:
         return true
 
     pub fn move_field(self, index: u256):
+        self.lock_validator.validate_owns_lock(msg.sender)
+
         if not self.is_valid_index(index):
             revert InvalidIndex()
         else:

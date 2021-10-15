@@ -15,7 +15,10 @@ struct OnlyAdmin:
     pass
 
 struct InvalidDeposit:
-  pass
+    pass
+
+struct MissingLock:
+    pass
 
 # Structure to represent a lock with a lease time
 struct ClaimLock:
@@ -42,6 +45,12 @@ contract BountyRegistry:
         else:
             self.lock = ClaimLock(claimer=msg.sender, valid_until_block=block.number+LOCK_PERIOD_IN_BLOCKS)
 
+
+
+    pub fn validate_owns_lock(self, owner: address):
+        if not self.is_locked() or self.lock.claimer != owner:
+            revert MissingLock()
+
     pub fn is_locked(self) -> bool:
         return self.lock.valid_until_block >= block.number
 
@@ -62,11 +71,9 @@ contract BountyRegistry:
         return self.open_challenges[challenge]
 
     pub fn claim(self, challenge: address):
-        if not self.is_locked():
-            revert InvalidClaim()
-        elif not self.open_challenges[challenge]:
-            revert InvalidClaim()
-        elif self.lock.claimer != msg.sender:
+        self.validate_owns_lock(msg.sender)
+
+        if not self.open_challenges[challenge]:
             revert InvalidClaim()
         else:
             let puzzle: ISolvable = ISolvable(challenge)

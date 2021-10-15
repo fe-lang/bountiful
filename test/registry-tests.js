@@ -13,9 +13,9 @@ async function mineBlocks(blockNumber) {
   }
 }
 
-async function deployGame(state) {
+async function deployGame(bounty_registry, state) {
   const Game = await ethers.getContractFactory("Game");
-  const game = await Game.deploy([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+  const game = await Game.deploy(bounty_registry, state);
   await game.deployed();
   return game
 }
@@ -129,11 +129,11 @@ describe("BountyRegistry", function () {
 
   it("Should solve challenge and claim bounty", async function () {
 
-    // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
+
+    // Deploy challenge
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     //Let's give the registry some prize money
     await admin.sendTransaction({
@@ -169,11 +169,11 @@ describe("BountyRegistry", function () {
 
   it("Should revert if random person tries to claim bounty", async function () {
 
-    // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
+
+    // Deploy challenge
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
@@ -189,18 +189,16 @@ describe("BountyRegistry", function () {
 
   it("Should revert when trying to claim without lock", async function () {
 
-    // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
 
+    // Deploy challenge in an already solved state only so that we can demonstrate
+    // that even then a lock would still be needed.
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
-    expect(await game.callStatic.is_solved()).to.be.false;
 
-    // Make winning move
-    await game.move_field(15);
     expect(await game.callStatic.is_solved()).to.be.true;
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
@@ -209,11 +207,11 @@ describe("BountyRegistry", function () {
 
   it("Should revert when trying to claim an unregistered challenge", async function () {
 
-    // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
+
+    // Deploy challenge
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.be.false;
@@ -228,11 +226,11 @@ describe("BountyRegistry", function () {
 
   it("Should revert when trying to claim an unsolved challenge", async function () {
 
-    // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-
     // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
+
+    // Deploy challenge
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
@@ -265,9 +263,11 @@ describe("BountyRegistry", function () {
   });
 
   it("Should revert if admin tries to withdraw when platform is locked", async function () {
+    // Deploy Bounty registry
     [registry, eric, admin] = await deployRegistry()
+
     // Deploy challenge
-    const game = await deployGame([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
