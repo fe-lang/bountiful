@@ -1,21 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-
-async function deployGame(bounty_registry, state) {
-  const Game = await ethers.getContractFactory("Game");
-  const game = await Game.deploy(bounty_registry, state);
-  await game.deployed();
-  return game
-}
-
-async function deployRegistry() {
-  const BountyRegistry = await ethers.getContractFactory("BountyRegistry");
-  [eric, admin] = await ethers.getSigners();
-  const registry = await BountyRegistry.deploy(admin.address);
-  await registry.deployed();
-  return [registry, eric, admin]
-}
-
+const { deployGame, deployRegistry, mineBlocks } = require('./utils.js');
 
 describe("Game", function () {
   it("Should go in winning state", async function () {
