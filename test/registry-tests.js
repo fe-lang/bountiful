@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { deployGame, deployRegistry, mineBlocks } = require('./utils.js');
+const { deployDefaultGame, deployRegistry, mineBlocks } = require('./utils.js');
 
 const ONE_ETH = ethers.utils.parseEther("1.0");
 
@@ -109,7 +109,7 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     // Deploy challenge
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     //Let's give the registry some prize money
     await admin.sendTransaction({
@@ -149,7 +149,7 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     // Deploy challenge
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
@@ -170,7 +170,7 @@ describe("BountyRegistry", function () {
 
     // Deploy challenge in an already solved state only so that we can demonstrate
     // that even then a lock would still be needed.
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
@@ -187,7 +187,7 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     // Deploy challenge
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.lock({value: ONE_ETH });
     expect(await game.callStatic.is_solved()).to.be.false;
@@ -206,7 +206,7 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     // Deploy challenge
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;
@@ -243,7 +243,7 @@ describe("BountyRegistry", function () {
     [registry, eric, admin] = await deployRegistry()
 
     // Deploy challenge
-    const game = await deployGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+    const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.callStatic.is_open_challenge(game.address)).to.be.true;

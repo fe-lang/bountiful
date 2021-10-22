@@ -8,11 +8,15 @@ async function mineBlocks(blockNumber) {
   }
 }
 
-async function deployGame(bounty_registry, state) {
-  const Game = await ethers.getContractFactory("Game");
+async function deployGame(identifier, bounty_registry, state) {
+  const Game = await ethers.getContractFactory(identifier);
   const game = await Game.deploy(bounty_registry, state);
   await game.deployed();
   return game
+}
+
+async function deployDefaultGame(bounty_registry, state) {
+  return await deployGame("contracts/Game.fe:Game", bounty_registry, state)
 }
 
 async function deployRegistry() {
@@ -26,3 +30,4 @@ async function deployRegistry() {
 exports.mineBlocks = mineBlocks
 exports.deployGame = deployGame
 exports.deployRegistry = deployRegistry
+exports.deployDefaultGame = deployDefaultGame
