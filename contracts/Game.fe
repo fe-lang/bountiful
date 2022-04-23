@@ -1,3 +1,5 @@
+use std::context::Context
+
 # Poor man's interface
 contract ILockValidator:
 
@@ -22,11 +24,11 @@ const INVALID_FIELD_MARKER: u256 = 666
 contract Game:
 
     lock_validator: ILockValidator
-    board: u256[16]
-    moves: Map<u256, u256[4]>
+    board: Array<u256, 16>
+    moves: Map<u256, Array<u256, 4>>
 
-    pub fn __init__(self, lock_validator: address, board: u256[16]):
-        self.lock_validator = ILockValidator(lock_validator)
+    pub fn __init__(self, ctx: Context, lock_validator: address, board: Array<u256, 16>):
+        self.lock_validator = ILockValidator(ctx, lock_validator)
         self.board = board
         # Map each empty slot to a list of possible moves
         # It would be nice to have fixed-size maps that work with `const` (baked into code)
@@ -47,12 +49,12 @@ contract Game:
         self.moves[14] = [10, 13, 15, INVALID_FIELD_MARKER]
         self.moves[15] = [11, 14, INVALID_FIELD_MARKER, INVALID_FIELD_MARKER]
 
-    pub fn get_board(self) -> u256[16]:
+    pub fn get_board(self) -> Array<u256, 16>:
         return self.board.to_mem()
 
     pub fn is_solved(self) -> bool:
         let index: u256 = 0
-        let current_board: u256[16] = self.board.to_mem()
+        let current_board: Array<u256, 16> = self.board.to_mem()
         # Workaround for: https://github.com/ethereum/fe/issues/528
         for _field in current_board:
             if current_board[index] != get_winning_state()[index]:
@@ -61,14 +63,14 @@ contract Game:
 
         return true
 
-    pub fn move_field(self, index: u256):
-        self.lock_validator.validate_owns_lock(msg.sender)
+    pub fn move_field(self, ctx: Context, index: u256):
+        self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
 
         if not self.is_valid_index(index):
             revert InvalidIndex()
         else:
-            let movable_fields: u256[4] = self.moves[self.get_index_of_empty_field()].to_mem()
-            if not is_in(index, movable_fields):
+            let movable_fields: Array<u256, 4> = self.moves[self.get_index_of_empty_field()].to_mem()
+            if not is_in(num: index, values: movable_fields):
                 revert NotMovable()
             else:
                 let empty_field_index: u256 = self.get_index_of_empty_field()
@@ -78,7 +80,7 @@ contract Game:
 
     fn get_index_of_empty_field(self) -> u256:
         let index: u256 = 0
-        let current_board: u256[16] = self.board.to_mem()
+        let current_board: Array<u256, 16> = self.board.to_mem()
         for field in current_board:
             if field == 0:
                 break
@@ -87,14 +89,14 @@ contract Game:
 
         return index
 
-    fn get_winning_state() -> u256[16]:
+    fn get_winning_state() -> Array<u256, 16>:
         # TODO: Make this a constant when complex constants are supported
         return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]
 
     fn is_valid_index(self, index: u256) -> bool:
         return index >= 0 and index <= 15
 
-    fn is_in(num: u256, values: u256[4]) -> bool:
+    fn is_in(num: u256, values: Array<u256, 4>) -> bool:
         for val in values:
             if val == num:
                 return true

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "is_solved",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "payable"
+  }
+]

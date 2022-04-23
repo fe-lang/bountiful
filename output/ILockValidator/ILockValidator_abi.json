@@ -1,0 +1,14 @@
+[
+  {
+    "name": "validate_owns_lock",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  }
+]
