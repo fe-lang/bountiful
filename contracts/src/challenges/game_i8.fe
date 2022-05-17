@@ -1,16 +1,7 @@
 use std::context::Context
+use ingot::challenges::errors::{InvalidIndex, NotMovable}
+use ingot::registry::lock_validator::ILockValidator
 
-# Poor man's interface
-contract ILockValidator:
-
-    pub fn validate_owns_lock(self, owner: address):
-        revert
-
-struct InvalidIndex:
-    pass
-
-struct NotMovable:
-    pass
 
 const EMPTY_FIELD_MARKER: u8 = 0
 # We don't have dynamically sized arrays. Since the number of moves
@@ -20,7 +11,7 @@ const EMPTY_FIELD_MARKER: u8 = 0
 fn invalid_field_marker() -> i8:
     return i8(-1)
 
-contract Game:
+pub contract GameI8:
 
     lock_validator: ILockValidator
     board: Array<u8, 16>
@@ -100,5 +91,4 @@ contract Game:
             if val == i8(num):
                 return true
         return false
-
 

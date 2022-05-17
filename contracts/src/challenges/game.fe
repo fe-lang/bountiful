@@ -1,16 +1,6 @@
 use std::context::Context
-
-# Poor man's interface
-contract ILockValidator:
-
-    pub fn validate_owns_lock(self, owner: address):
-        revert
-
-struct InvalidIndex:
-    pass
-
-struct NotMovable:
-    pass
+use ingot::challenges::errors::{InvalidIndex, NotMovable}
+use ingot::registry::lock_validator::ILockValidator
 
 const EMPTY_FIELD_MARKER: u256 = 0
 # We don't have dynamically sized arrays. Since the number of moves
@@ -21,7 +11,7 @@ const EMPTY_FIELD_MARKER: u256 = 0
 # That's blocked on https://github.com/ethereum/fe/issues/564
 const INVALID_FIELD_MARKER: u256 = 666
 
-contract Game:
+pub contract Game:
 
     lock_validator: ILockValidator
     board: Array<u256, 16>

@@ -1,26 +1,7 @@
 use std::context::Context
+use ingot::registry::solvable::ISolvable
+use ingot::registry::errors::{AlreadyLocked, InvalidClaim, OnlyAdmin, InvalidDeposit, MissingLock}
 
-# Poor man's interface
-contract ISolvable:
-
-  pub fn is_solved(self) -> bool:
-    revert
-
-# Revert errors
-struct AlreadyLocked:
-    pass
-
-struct InvalidClaim:
-    pass
-
-struct OnlyAdmin:
-    pass
-
-struct InvalidDeposit:
-    pass
-
-struct MissingLock:
-    pass
 
 # Structure to represent a lock with a lease time
 struct ClaimLock:
@@ -28,9 +9,9 @@ struct ClaimLock:
     pub valid_until_block: u256
 
 const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
-const ONE_ETH_IN_WEI: u256 = 1000000000000000000
+const ONE_ETH_IN_WEI: u256 = 1_000_000_000_000_000_000
 
-contract BountyRegistry:
+pub contract BountyRegistry:
 
     lock: ClaimLock
     open_challenges: Map<address, bool>

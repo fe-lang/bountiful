@@ -1,0 +1,4 @@
+# Temporary hack to force creation of the artifacts for these contracts via a custom Fe build
+type registry = registry::registry::BountyRegistry
+type game = challenges::game::Game
+type game2 = challenges::game_i8::GameI8

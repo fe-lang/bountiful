@@ -4,7 +4,9 @@ const { deployDefaultGame, deployRegistry, mineBlocks } = require('./utils.js');
 
 const ONE_ETH = ethers.utils.parseEther("1.0");
 
+
 describe("BountyRegistry", function () {
+
   it("Should initially be unlocked", async function () {
     [registry, eric, admin] = await deployRegistry()
 

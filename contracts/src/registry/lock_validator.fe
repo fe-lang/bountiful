@@ -1,0 +1,6 @@
+# Poor man's interface.
+# In the future Fe will allow to definer proper interfaces
+pub contract ILockValidator:
+
+    pub fn validate_owns_lock(self, owner: address):
+        revert

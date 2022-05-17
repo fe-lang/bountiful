@@ -16,7 +16,7 @@ async function deployGame(identifier, bounty_registry, state) {
 }
 
 async function deployDefaultGame(bounty_registry, state) {
-  return await deployGame("contracts/Game.fe:Game", bounty_registry, state)
+  return await deployGame("contracts/src/main.fe:Game", bounty_registry, state)
 }
 
 async function deployRegistry() {

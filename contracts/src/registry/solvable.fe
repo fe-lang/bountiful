@@ -1,0 +1,6 @@
+# Poor man's interface
+# In the future Fe will allow to properly define interfaces
+pub contract ISolvable:
+
+  pub fn is_solved(self) -> bool:
+    revert
