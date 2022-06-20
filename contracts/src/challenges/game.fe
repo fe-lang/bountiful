@@ -3,12 +3,10 @@ use ingot::challenges::errors::{InvalidIndex, NotMovable}
 use ingot::registry::lock_validator::ILockValidator
 
 const EMPTY_FIELD_MARKER: u256 = 0
-# We don't have dynamically sized arrays. Since the number of moves
-# varies depending on the position of the empty field, we need a marker
-# for invalid moves.
 
-# We could turn this into a slightly cleaner value of -1 if we used signed integers
-# That's blocked on https://github.com/ethereum/fe/issues/564
+# We don't have dynamically sized arrays. Since the number of moves
+# varies depending on the position of the empty field, we need to mark
+# the directions that point outside of the game field as invalid.
 const INVALID_FIELD_MARKER: u256 = 666
 
 pub contract Game {
