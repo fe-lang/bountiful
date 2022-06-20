@@ -1,15 +1,10 @@
 # Revert errors
-pub struct AlreadyLocked:
-    pass
+pub struct AlreadyLocked {}
 
-pub struct InvalidClaim:
-    pass
+pub struct InvalidClaim {}
 
-pub struct OnlyAdmin:
-    pass
+pub struct OnlyAdmin {}
 
-pub struct InvalidDeposit:
-    pass
+pub struct InvalidDeposit {}
 
-pub struct MissingLock:
-    pass
+pub struct MissingLock {}

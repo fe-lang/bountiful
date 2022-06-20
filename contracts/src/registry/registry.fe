@@ -4,73 +4,92 @@ use ingot::registry::errors::{AlreadyLocked, InvalidClaim, OnlyAdmin, InvalidDep
 
 
 # Structure to represent a lock with a lease time
-struct ClaimLock:
+struct ClaimLock  {
     pub claimer: address
     pub valid_until_block: u256
+}
 
 const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
 const ONE_ETH_IN_WEI: u256 = 1_000_000_000_000_000_000
 
-pub contract BountyRegistry:
+pub contract BountyRegistry {
 
     lock: ClaimLock
     open_challenges: Map<address, bool>
     admin: address
 
-    pub fn __init__(self, admin: address):
+    pub fn __init__(self, admin: address)  {
         self.admin = admin
+    }
 
-    pub fn lock(self, ctx: Context):
-        if self.is_locked(ctx):
+    pub fn lock(self, ctx: Context) {
+        if self.is_locked(ctx) {
           revert AlreadyLocked()
-        elif ctx.msg_value() < ONE_ETH_IN_WEI:
+        } else if ctx.msg_value() < ONE_ETH_IN_WEI {
           revert InvalidDeposit()
-        else:
+        } else {
             self.lock = ClaimLock(claimer:ctx.msg_sender(), valid_until_block: ctx.block_number() + LOCK_PERIOD_IN_BLOCKS)
+        }
+    }
 
-    pub fn validate_owns_lock(self, ctx: Context, owner: address):
-        if not self.is_locked(ctx) or self.lock.claimer != owner:
+    pub fn validate_owns_lock(self, ctx: Context, owner: address){
+        if not self.is_locked(ctx) or self.lock.claimer != owner {
             revert MissingLock()
+        }
+    }
 
-    pub fn is_locked(self, ctx: Context) -> bool:
+    pub fn is_locked(self, ctx: Context) -> bool {
         return self.lock.valid_until_block >= ctx.block_number()
+    }
 
-    pub fn register_challenge(self, ctx: Context, challenge: address):
+    pub fn register_challenge(self, ctx: Context, challenge: address) {
         self.validate_is_admin(ctx)
         self.open_challenges[challenge] = true
+    }
 
-    pub fn remove_challenge(self, ctx: Context, challenge: address):
+    pub fn remove_challenge(self, ctx: Context, challenge: address) {
         self.validate_is_admin(ctx)
 
-        if self.is_locked(ctx):
+        if self.is_locked(ctx) {
             revert AlreadyLocked()
-        else:
+        } else {
             self.open_challenges[challenge] = false
+        }
+    }
 
-    pub fn is_open_challenge(self, challenge: address) -> bool:
+    pub fn is_open_challenge(self, challenge: address) -> bool {
         return self.open_challenges[challenge]
+    }
 
-    pub fn claim(self, ctx: Context, challenge: address):
+    pub fn claim(self, ctx: Context, challenge: address) {
         self.validate_owns_lock(ctx, owner: ctx.msg_sender())
 
-        if not self.open_challenges[challenge]:
+        if not self.open_challenges[challenge] {
             revert InvalidClaim()
-        else:
-            let puzzle: ISolvable = ISolvable(ctx, challenge)
-            if puzzle.is_solved():
+        } else {
+            let puzzle: ISolvable = ISolvable(challenge)
+            if puzzle.is_solved() {
                 ctx.send_value(to: ctx.msg_sender(), wei: ctx.self_balance())
-            else:
+            } else {
                 revert InvalidClaim()
+            }
+        }
+    }
 
-    pub fn withdraw(self, ctx: Context):
+    pub fn withdraw(self, ctx: Context) {
         # Admin should be allowed to withdraw funds if there's no lock in progress
         # This would be used to migrate to a new bounty registry
         self.validate_is_admin(ctx)
-        if self.is_locked(ctx):
+        if self.is_locked(ctx) {
             revert AlreadyLocked()
-        else:
+        } else  {
             ctx.send_value(to: ctx.msg_sender(), wei: ctx.self_balance())
+        }
+    }
 
-    fn validate_is_admin(self, ctx: Context):
-        if ctx.msg_sender() != self.admin:
+    fn validate_is_admin(self, ctx: Context) {
+        if ctx.msg_sender() != self.admin  {
             revert OnlyAdmin()
+        }
+    }
+}

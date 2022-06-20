@@ -1,5 +1,3 @@
-pub struct InvalidIndex:
-    pass
+pub struct InvalidIndex {}
 
-pub struct NotMovable:
-    pass
+pub struct NotMovable {}
