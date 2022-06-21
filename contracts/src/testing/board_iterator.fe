@@ -1,0 +1,51 @@
+use ingot::challenges::board_iterator::BoardIterator
+
+
+pub contract BoardIteratorTest {
+
+    pub fn __init__() {
+        let iter: BoardIterator = BoardIterator::new()
+        let (row_a, column_a): (u8, u8) = iter.next()
+        assert row_a == 0
+        assert column_a == 0
+
+        # TODO: File bug about not being able to compare tuple
+        let (row_b, column_b): (u8, u8) = iter.next()
+        assert row_b == 0
+        assert column_b == 1
+
+        let (row_c, column_c): (u8, u8) = iter.next()
+        assert row_c == 0
+        assert column_c == 2
+
+        let (row_d, column_d): (u8, u8) = iter.next()
+        assert row_d == 0
+        assert column_d == 3
+
+        let (row_e, column_e): (u8, u8) = iter.next()
+        assert row_e == 1
+        assert column_e == 0
+        iter.next()
+        iter.next()
+        iter.next()
+
+        let (row_f, column_f): (u8, u8) = iter.next()
+        assert row_f == 2
+        assert column_f == 0
+
+        iter.next()
+        iter.next()
+        iter.next()
+
+        let (row_g, column_g): (u8, u8) = iter.next()
+        assert row_g == 3
+        assert column_g == 0
+
+        iter.next()
+        iter.next()
+        let (row_h, column_h): (u8, u8) = iter.next()
+        assert row_h == 3
+        assert column_h == 3
+        assert not iter.has_next()
+    }
+}

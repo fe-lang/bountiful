@@ -1,0 +1,287 @@
+use std::context::Context
+use ingot::challenges::errors::{InvalidIndex, NotMovable}
+use ingot::challenges::board_iterator::BoardIterator
+use ingot::registry::lock_validator::ILockValidator
+
+
+trait ForEachDelegate {
+    fn process(self, index: u8, is_final: bool, field: Field);
+}
+
+struct ValidateSuccessDelegate {
+    error: bool
+
+    pub fn new() -> ValidateSuccessDelegate {
+        return ValidateSuccessDelegate(error: false)
+    }
+    
+    pub fn error(self) {
+        self.error = true
+    }
+
+    pub fn is_success(self) -> bool {
+        return not self.error
+    }
+}
+
+impl ForEachDelegate for ValidateSuccessDelegate {
+    fn process(self, index: u8, is_final: bool, field: Field) {
+        if (is_final and field.get_value() != 0) or (not is_final and field.get_value() != index + 1) {
+            self.error()
+        }
+    }
+}
+
+trait SolveCheck {
+    fn is_solved(self) -> bool;
+}
+
+# TODO: Wrapping the board should not be needed if we had a way to differentiate between trait implementations at the callsite
+struct SimpleSolveCheck {
+    pub board: Board
+}
+
+impl SolveCheck for SimpleSolveCheck {
+    fn is_solved(self) -> bool {
+        let board_iterator: BoardIterator = BoardIterator::new()
+        let value: u8 = 1
+
+        while board_iterator.has_next() {
+            let (row, column): (u8, u8) = board_iterator.next()
+            let field: Field = self.board.get_field_at(row, column)
+
+            if not board_iterator.has_next() {
+                # The last item needs to be zero and the previous items should be ordered 1..15
+                return field.get_value() == 0
+            } else if field.get_value() != value {
+                return false
+            }
+
+            value += 1
+        }
+
+        return true
+    }
+}
+
+struct FancySolveCheck {
+    pub board: Board
+}
+
+impl SolveCheck for FancySolveCheck {
+    fn is_solved(self) -> bool {
+        let delegate: ValidateSuccessDelegate = ValidateSuccessDelegate::new()
+        self.board.for_each_field(delegate)
+        return delegate.is_success()
+    }
+}
+
+pub struct Field {
+    row: u8
+    column: u8
+    value: u8
+
+    pub fn new(row: u8, column: u8, value: u8) -> Field {
+        return Field(row, column, value)
+    }
+
+    pub fn get_value(self) -> u8 {
+        return self.value
+    }
+
+    pub fn new_value(self, _ value: u8) -> Field {
+        return Field(row: self.row, column: self.column, value)
+    }
+
+    pub fn is_zero(self) -> bool {
+        return self.value == 0
+    }
+
+    pub fn get_row(self) -> u8 {
+        return self.row
+    }
+
+    pub fn get_column(self) -> u8 {
+        return self.column
+    }
+
+    pub fn has_neighbour_left(self) -> bool {
+        return self.column > 0
+    }
+
+    pub fn has_neighbour_right(self) -> bool {
+        return self.column < 3
+    }
+
+    pub fn has_neighbour_above(self) -> bool {
+        return self.row > 0
+    }
+
+    pub fn has_neighbour_below(self) -> bool {
+        return self.row < 3
+    }
+}
+
+pub struct Board {
+    state: Array<Array<Field, 4>, 4>
+
+    pub fn new(_ init_state: Array<u8, 16>) -> Board {
+        let board_iterator: BoardIterator = BoardIterator::new()
+        let state: Array<Array<Field, 4>, 4>
+        for value in init_state {
+            let (row, column): (u8, u8) = board_iterator.next()
+            state[u256(row)][u256(column)] = Field::new(row, column, value)
+        }
+        return Board(state)
+    }
+
+    pub fn get_field_at(self, row: u8, column: u8) -> Field {
+        if not Board::is_valid_field(row, column) {
+            revert InvalidIndex()
+        }
+        return self.state[u256(row)][u256(column)]
+    }
+
+    pub fn is_valid_field (row: u8, column: u8) -> bool {
+        return (row >= 0 and row <= 3) and (column >= 0 and column <= 3)
+    }
+
+    pub fn get_neighbour_left(self, row: u8, column: u8) -> Field {
+        let original_field: Field = self.get_field_at(row, column)
+        if not original_field.has_neighbour_left() {
+            revert InvalidIndex()
+        }
+        let new_column: u8 = original_field.get_column() - 1
+        return self.state[u256(original_field.get_row())][u256(new_column)]
+    }
+
+    pub fn get_neighbour_right(self, row: u8, column: u8) -> Field {
+        let original_field: Field = self.get_field_at(row, column)
+        if not original_field.has_neighbour_right() {
+            revert InvalidIndex()
+        }
+        let new_column: u8 = original_field.get_column() + 1
+        return self.state[u256(original_field.get_row())][u256(new_column)]
+    }
+
+    pub fn get_neighbour_above(self, row: u8, column: u8) -> Field {
+        let original_field: Field = self.get_field_at(row, column)
+        if not original_field.has_neighbour_above() {
+            revert InvalidIndex()
+        }
+        let new_row: u8 = original_field.get_row() - 1
+        return self.state[u256(new_row)][u256(original_field.get_column())]
+    }
+
+    pub fn get_neighbour_below(self, row: u8, column: u8) -> Field {
+        let original_field: Field = self.get_field_at(row, column)
+        if not original_field.has_neighbour_below() {
+            revert InvalidIndex()
+        }
+        let new_row: u8 = original_field.get_row() + 1
+        return self.state[u256(new_row)][u256(original_field.get_column())]
+    }
+
+    pub fn move_field(self, row: u8, column: u8) {
+        let original: Field = self.get_field_at(row, column)
+        if original.has_neighbour_left() {
+            let suspect: Field = self.get_neighbour_left(row, column)
+            if self.try_swap_fields(original, suspect) { 
+                return 
+            }
+        }
+        if original.has_neighbour_above() {
+            let suspect: Field = self.get_neighbour_above(row, column)
+            if self.try_swap_fields(original, suspect) { 
+                return 
+            }
+        }
+        if original.has_neighbour_right() {
+            let suspect: Field = self.get_neighbour_right(row, column)
+            if self.try_swap_fields(original, suspect) { 
+                return 
+            }
+        }
+        if original.has_neighbour_below() {
+            let suspect: Field = self.get_neighbour_below(row, column)
+            if self.try_swap_fields(original, suspect) { 
+                return 
+            }
+        }
+
+        revert NotMovable()
+    }
+
+    pub fn is_solved<T: SolveCheck>(self, check: T) -> bool {
+        return check.is_solved()
+    }
+
+    pub fn for_each_field<T: ForEachDelegate>(self, delegate: T) {
+        let board_iterator: BoardIterator = BoardIterator::new()
+        let index: u8 = 0
+
+        while board_iterator.has_next() {
+            let (row, column): (u8, u8) = board_iterator.next()
+            let field: Field = self.get_field_at(row, column)
+            delegate.process(index, is_final: not board_iterator.has_next(), field)
+            index += 1
+        }
+    }
+
+    fn try_swap_fields(self, original: Field, suspect: Field) -> bool {
+        if suspect.is_zero() {
+            # TODO: We should not need this since `new_value(..)` should allocate new memory.
+            let unchanged: Field = original.clone()
+            self.state[u256(original.get_row())][u256(original.get_column())] = original.new_value(suspect.clone().get_value())
+            self.state[u256(suspect.get_row())][u256(suspect.get_column())] = suspect.new_value(unchanged.get_value())
+            return true
+        }
+        return false
+    }
+}
+
+pub contract Game3 {
+
+    lock_validator: ILockValidator
+    board: Board
+
+    pub fn __init__(self, lock_validator: address, board: Array<u8, 16>) {
+        self.lock_validator = ILockValidator(lock_validator)
+        self.board = Board::new(board)
+    }
+
+    pub fn is_solved(self) -> bool{
+        return self.board.to_mem().is_solved(check: FancySolveCheck(board: self.board.to_mem()))
+    }
+
+    pub fn move_field(self, ctx: Context, row: u8, column: u8){
+        self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+        let board: Board = self.board.to_mem()
+        board.move_field(row, column)
+        self.board = board
+    }
+
+}
+
+pub contract Game4 {
+
+    lock_validator: ILockValidator
+    board: Board
+
+    pub fn __init__(self, lock_validator: address, board: Array<u8, 16>) {
+        self.lock_validator = ILockValidator(lock_validator)
+        self.board = Board::new(board)
+    }
+
+    pub fn is_solved(self) -> bool{
+        return self.board.to_mem().is_solved(check: SimpleSolveCheck(board: self.board.to_mem()))
+    }
+
+    pub fn move_field(self, ctx: Context, row: u8, column: u8){
+        self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+        let board: Board = self.board.to_mem()
+        board.move_field(row, column)
+        self.board = board
+    }
+
+}

@@ -27,7 +27,15 @@ async function deployRegistry() {
   return [registry, eric, admin]
 }
 
+async function deployContract(identifier) {
+  const BoardIterator = await ethers.getContractFactory(identifier);
+  const target = await BoardIterator.deploy();
+  await target.deployed();
+  return target
+}
+
 exports.mineBlocks = mineBlocks
 exports.deployGame = deployGame
 exports.deployRegistry = deployRegistry
 exports.deployDefaultGame = deployDefaultGame
+exports.deployContract = deployContract
