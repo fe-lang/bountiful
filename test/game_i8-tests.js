@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { deployGame, deployRegistry, mineBlocks } = require('./utils.js');
 
-describe("Game", function () {
+describe("Game i8", function () {
   it("Should go in winning state", async function () {
 
     [registry, eric, admin] = await deployRegistry()
