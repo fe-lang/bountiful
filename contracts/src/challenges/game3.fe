@@ -36,7 +36,10 @@ trait SolveCheck {
     fn is_solved(self) -> bool;
 }
 
-# TODO: Wrapping the board should not be needed if we had a way to differentiate between trait implementations at the callsite
+
+# Once traits can be generic, we could use marker structs to avoid having to wrap `Board`
+# E.g. `impl SolveCheck<Simple> for Board`, `impl<SolveCheck<Fancy> for Board` etc.
+# See: https://stackoverflow.com/questions/65832862/multiple-implementations-for-the-same-trait-of-the-same-type-in-rust/65847940#65847940
 struct SimpleSolveCheck {
     pub board: Board
 }
