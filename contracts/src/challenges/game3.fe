@@ -235,7 +235,7 @@ pub struct Board {
         if suspect.is_zero() {
             # TODO: We should not need this since `new_value(..)` should allocate new memory.
             let unchanged: Field = original.clone()
-            self.state[u256(original.get_row())][u256(original.get_column())] = original.new_value(suspect.clone().get_value())
+            self.state[u256(original.get_row())][u256(original.get_column())] = original.new_value(suspect.get_value())
             self.state[u256(suspect.get_row())][u256(suspect.get_column())] = suspect.new_value(unchanged.get_value())
             return true
         }
