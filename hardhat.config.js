@@ -21,5 +21,11 @@ module.exports = {
   solidity: "0.8.4",
   fe: {
     version: "0.18.0-alpha"
+  },
+  networks: {
+    goerli: {
+      url: `http://goerli.prylabs.net/`,
+      accounts: [`${process.env.GOERLI_DEPLOYER_PK}`]
+    }
   }
 };
