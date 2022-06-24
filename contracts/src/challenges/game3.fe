@@ -4,15 +4,15 @@ use ingot::challenges::board_iterator::BoardIterator
 use ingot::registry::lock_validator::ILockValidator
 
 
-trait ForEachDelegate {
+trait ForEachAction {
     fn process(self, index: u8, is_final: bool, field: Field);
 }
 
-struct ValidateSuccessDelegate {
+struct ValidateSuccessAction {
     error: bool
 
-    pub fn new() -> ValidateSuccessDelegate {
-        return ValidateSuccessDelegate(error: false)
+    pub fn new() -> ValidateSuccessAction {
+        return ValidateSuccessAction(error: false)
     }
     
     pub fn error(self) {
@@ -24,7 +24,7 @@ struct ValidateSuccessDelegate {
     }
 }
 
-impl ForEachDelegate for ValidateSuccessDelegate {
+impl ForEachAction for ValidateSuccessAction {
     fn process(self, index: u8, is_final: bool, field: Field) {
         if (is_final and field.get_value() != 0) or (not is_final and field.get_value() != index + 1) {
             self.error()
@@ -73,9 +73,9 @@ struct FancySolveCheck {
 
 impl SolveCheck for FancySolveCheck {
     fn is_solved(self) -> bool {
-        let delegate: ValidateSuccessDelegate = ValidateSuccessDelegate::new()
-        self.board.for_each_field(delegate)
-        return delegate.is_success()
+        let action: ValidateSuccessAction = ValidateSuccessAction::new()
+        self.board.for_each_field(action)
+        return action.is_success()
     }
 }
 
@@ -219,14 +219,14 @@ pub struct Board {
         return check.is_solved()
     }
 
-    pub fn for_each_field<T: ForEachDelegate>(self, delegate: T) {
+    pub fn for_each_field<T: ForEachAction>(self, action: T) {
         let board_iterator: BoardIterator = BoardIterator::new()
         let index: u8 = 0
 
         while board_iterator.has_next() {
             let (row, column): (u8, u8) = board_iterator.next()
             let field: Field = self.get_field_at(row, column)
-            delegate.process(index, is_final: not board_iterator.has_next(), field)
+            action.process(index, is_final: not board_iterator.has_next(), field)
             index += 1
         }
     }
