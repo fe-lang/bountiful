@@ -1,6 +1,10 @@
 require("@nomiclabs/hardhat-waffle");
 require("@developerdao/hardhat-fe");
 
+require("dotenv").config({
+  path: require("path").resolve(__dirname, "./.env"),
+});
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -20,12 +24,12 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.4",
   fe: {
-    version: "0.18.0-alpha"
+    version: "0.18.0-alpha",
   },
   networks: {
     goerli: {
       url: `http://goerli.prylabs.net/`,
-      accounts: [`${process.env.GOERLI_DEPLOYER_PK}`]
-    }
-  }
+      accounts: [`0x${process.env.GOERLI_DEPLOYER_PK}`],
+    },
+  },
 };
