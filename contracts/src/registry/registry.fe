@@ -10,7 +10,7 @@ struct ClaimLock  {
 }
 
 const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
-const ONE_ETH_IN_WEI: u256 = 1_000_000_000_000_000_000
+const LOCK_DEPOSIT_IN_WEI: u256 = 1_000_000_000_000_000_000
 
 pub contract BountyRegistry {
 
@@ -25,7 +25,7 @@ pub contract BountyRegistry {
     pub fn lock(self, ctx: Context) {
         if self.is_locked(ctx) {
           revert AlreadyLocked()
-        } else if ctx.msg_value() < ONE_ETH_IN_WEI {
+        } else if ctx.msg_value() < LOCK_DEPOSIT_IN_WEI {
           revert InvalidDeposit()
         } else {
             self.lock = ClaimLock(claimer:ctx.msg_sender(), valid_until_block: ctx.block_number() + LOCK_PERIOD_IN_BLOCKS)
