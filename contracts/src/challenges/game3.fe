@@ -130,7 +130,7 @@ pub struct Board {
 
     pub fn new(_ init_state: Array<u8, 16>) -> Board {
         let board_iterator: BoardIterator = BoardIterator::new()
-        let state: Array<Array<Field, 4>, 4>
+        let state: Array<Array<Field, 4>, 4> = [[Field::new(row: 0, column: 0, value: 0); 4]; 4]
         for value in init_state {
             let (row, column): (u8, u8) = board_iterator.next()
             state[u256(row)][u256(column)] = Field::new(row, column, value)
