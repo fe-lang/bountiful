@@ -27,8 +27,12 @@ module.exports = {
   },
   networks: {
     goerli: {
-      url: `${process.env.GOERLI_JSON_RPC}`, //`http://goerli.prylabs.net/`,
+      url: `${process.env.GOERLI_JSON_RPC}`,
       accounts: [`${process.env.GOERLI_DEPLOYER_PK}`]
+    },
+    mainnet: {
+      url: `${process.env.MAINNET_JSON_RPC}`,
+      accounts: [`${process.env.MAINNET_DEPLOYER_PK}`]
     }
   }
 };
