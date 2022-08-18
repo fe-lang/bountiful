@@ -1,6 +1,9 @@
 require("@nomiclabs/hardhat-waffle");
 require("@developerdao/hardhat-fe");
 
+require("./scripts/deploy-task");
+
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -24,7 +27,7 @@ module.exports = {
   },
   networks: {
     goerli: {
-      url: `http://goerli.prylabs.net/`,
+      url: `${process.env.GOERLI_JSON_RPC}`, //`http://goerli.prylabs.net/`,
       accounts: [`${process.env.GOERLI_DEPLOYER_PK}`]
     }
   }

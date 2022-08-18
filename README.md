@@ -13,7 +13,8 @@ Bountiful is a registry for contracts that should uphold certain conditions. If 
 
 ## Mainnet deployment
 
-COMING SOON
+1. `npx hardhat deploy --network mainnet`
+2. After the deployment went through, send the prize money to the registry contract manually.
 
 ## Claiming process
 

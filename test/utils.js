@@ -1,3 +1,4 @@
+
 async function mineBlocks(blockNumber) {
   while (blockNumber > 0) {
     blockNumber--;
