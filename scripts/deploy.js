@@ -24,8 +24,9 @@ async function deployAll(deployer, admin, init_state, prize_money_in_eth) {
     console.log(`Deploying: ${game}`);
     const deployedGame = await deployGame(`contracts/src/main.fe:${game}`, registry.address, init_state);
     console.log(`${game} deployed to: ${deployedGame.address}`);
-    await (await registry.connect(admin).register_challenge(deployedGame.address)).wait();
-    console.log("Game registered");
+    let registerTx = await registry.connect(admin).register_challenge(deployedGame.address);
+    await registerTx.wait();
+    console.log(`Game registered via tx ${registerTx.hash}`);
   }
 
   //Let's give the registry some prize money

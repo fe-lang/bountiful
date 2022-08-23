@@ -14,9 +14,10 @@ task("deploy", "task to deploy the bountiful suite")
     const prize_money = taskArgs.funded ? PRIZE_MONEY_IN_ETH : 0
 
     if (hre.network.name === "goerli") {
-      if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS) {
-        console.error(`ENV Vars missing GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`)
-        console.error(`ENV Vars missing GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`)
+      if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS === undefined) {
+        console.log(`Check ENV Vars`);
+        console.error(`ENV Vars GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`);
+        console.error(`ENV Vars GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`);
         return
       }
   
@@ -25,9 +26,10 @@ task("deploy", "task to deploy the bountiful suite")
       await deployAll(deployer, admin, init_state, prize_money)
     } else if (hre.network.name === "mainnet") {
 
-      if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS) {
-        console.error(`ENV Vars missing MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`)
-        console.error(`ENV Vars missing MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`)
+      if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS === undefined) {
+        console.log(`Check ENV Vars`);
+        console.error(`ENV Vars MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`);
+        console.error(`ENV Vars MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`);
         return
       }
 
