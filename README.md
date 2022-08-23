@@ -16,6 +16,19 @@ Bountiful is a registry for contracts that should uphold certain conditions. If 
 1. `npx hardhat deploy --network mainnet`
 2. After the deployment went through, send the prize money to the registry contract manually.
 
+## How to run the tests
+
+1. Run `git clone https://github.com/cburgdorf/bountiful.git`
+2. Run `npx hardhat test`
+
+## Administrative money withdrawal
+
+Unless the system is in `locked` state, the admin can withdraw the prize money at any time. This would be used to migrate
+to a newer version of the system.
+
+Run: `npx hardhat withdraw --network mainnet`
+
+
 ## Claiming process
 
 [Ethereum is a dark forest](https://www.paradigm.xyz/2020/08/ethereum-is-a-dark-forest) which is why we need a front running prevention mechanism. In short, if it is possible to send a transaction that will make the sender richer (in our case by exploiting a Fe bug and claiming ETH prize money) we can be sure that somewhere there's a bot noticing it who will perform the same transaction faster leaving the honest claimer empty handed.
@@ -36,7 +49,3 @@ To avoid this we've come up with a very simple front-running prevention mechanis
 
 7. Profit! 💸
 
-## How to run
-
-1. Run `git clone https://github.com/cburgdorf/bountiful.git`
-2. Run `npx hardhat test`

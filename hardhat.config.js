@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@developerdao/hardhat-fe");
 
 require("./scripts/deploy-task");
+require("./scripts/withdraw-task");
 
 
 // This is a sample Hardhat task. To learn how to create your own go to
