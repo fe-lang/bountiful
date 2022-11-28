@@ -24,7 +24,8 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.4",
   fe: {
-    version: "0.19.1-alpha"
+    //version: "0.19.1-alpha",
+    compilerPath: '~/Documents/hacking/ef/fe/target/debug/fe'
   },
   networks: {
     goerli: {

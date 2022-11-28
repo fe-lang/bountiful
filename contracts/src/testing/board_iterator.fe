@@ -9,7 +9,7 @@ pub contract BoardIteratorTest {
         assert row_a == 0
         assert column_a == 0
 
-        # TODO: File bug about not being able to compare tuple
+        // TODO: File bug about not being able to compare tuple
         let (row_b, column_b): (u8, u8) = iter.next()
         assert row_b == 0
         assert column_b == 1

@@ -3,7 +3,7 @@ use ingot::registry::solvable::ISolvable
 use ingot::registry::errors::{AlreadyLocked, InvalidClaim, OnlyAdmin, InvalidDeposit, MissingLock}
 
 
-# Structure to represent a lock with a lease time
+// Structure to represent a lock with a lease time
 struct ClaimLock  {
     pub claimer: address
     pub valid_until_block: u256
@@ -77,8 +77,8 @@ pub contract BountyRegistry {
     }
 
     pub fn withdraw(self, ctx: Context) {
-        # Admin should be allowed to withdraw funds if there's no lock in progress
-        # This would be used to migrate to a new bounty registry
+        // Admin should be allowed to withdraw funds if there's no lock in progress
+        // This would be used to migrate to a new bounty registry
         self.validate_is_admin(ctx)
         if self.is_locked(ctx) {
             revert AlreadyLocked()
