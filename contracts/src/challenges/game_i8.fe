@@ -17,7 +17,7 @@ pub contract GameI8 {
     board: Array<u8, 16>
     moves: Map<u8, Array<i8, 4>>
 
-    pub fn __init__(self, lock_validator: address, board: Array<u8, 16>) {
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
         self.lock_validator = ILockValidator(lock_validator)
         self.board = board
         // Map each empty slot to a list of possible moves
@@ -45,7 +45,7 @@ pub contract GameI8 {
     }
 
     pub fn is_solved(self) -> bool{
-        let index: u256 = 0
+        let mut index: u256 = 0
         let current_board: Array<u8, 16> = self.board.to_mem()
         // Workaround for: https://github.com/ethereum/fe/issues/528
         for _field in current_board {
@@ -57,7 +57,7 @@ pub contract GameI8 {
         return true
     }
 
-    pub fn move_field(self, ctx: Context, index: u8){
+    pub fn move_field(mut self, ctx: Context, index: u8){
         self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
 
         if not self.is_valid_index(index){
@@ -76,7 +76,7 @@ pub contract GameI8 {
     }
 
     fn get_index_of_empty_field(self) -> u8{
-        let index: u8 = 0
+        let mut index: u8 = 0
         let current_board: Array<u8, 16> = self.board.to_mem()
         for field in current_board {
             if field == 0 {

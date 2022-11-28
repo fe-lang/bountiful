@@ -1,0 +1,80 @@
+use ingot::registry::lock_validator::ILockValidator
+
+pub struct Field {
+    row: u8
+    column: u8
+    value: u8
+
+    pub fn new(row: u8, column: u8, value: u8) -> Field {
+        return Field(row, column, value)
+    }
+
+    pub fn get_value(self) -> u8 {
+        return self.value
+    }
+
+    pub fn new_value(self, _ value: u8) -> Field {
+        return Field(row: self.row, column: self.column, value)
+    }
+
+    pub fn is_zero(self) -> bool {
+        return self.value == 0
+    }
+
+    pub fn get_row(self) -> u8 {
+        return self.row
+    }
+
+    pub fn get_column(self) -> u8 {
+        return self.column
+    }
+
+    pub fn has_neighbour_left(self) -> bool {
+        return self.column > 0
+    }
+
+    pub fn has_neighbour_right(self) -> bool {
+        return self.column < 3
+    }
+
+    pub fn has_neighbour_above(self) -> bool {
+        return self.row > 0
+    }
+
+    pub fn has_neighbour_below(self) -> bool {
+        return self.row < 3
+    }
+}
+
+pub struct Board {
+    state: Array<Array<Field, 4>, 4>
+
+    pub fn new() -> Board {
+        let state: Array<Array<Field, 4>, 4> = [[Field::new(row: 0, column: 0, value: 0); 4]; 4]
+        return Board(state)
+    }
+}
+
+
+pub contract Game5 {
+
+    lock_validator: ILockValidator
+    //board: Board
+
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
+        self.lock_validator = ILockValidator(lock_validator)
+        //self.board = Board::new(board)
+    }
+
+    //pub fn is_solved(self) -> bool{
+    //    return self.board.to_mem().is_solved(check: FancySolveCheck(board: self.board.to_mem()))
+    //}
+
+    //pub fn move_field(mut self, ctx: Context, row: u8, column: u8){
+    //  self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+    //  let mut board: Board = self.board.to_mem()
+    //  board.move_field(row, column)
+    //  self.board = board
+    //}
+
+}

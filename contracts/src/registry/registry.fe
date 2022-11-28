@@ -18,11 +18,11 @@ pub contract BountyRegistry {
     open_challenges: Map<address, bool>
     admin: address
 
-    pub fn __init__(self, admin: address)  {
+    pub fn __init__(mut self, admin: address)  {
         self.admin = admin
     }
 
-    pub fn lock(self, ctx: Context) {
+    pub fn lock(mut self, ctx: Context) {
         if self.is_locked(ctx) {
           revert AlreadyLocked()
         } else if ctx.msg_value() < LOCK_DEPOSIT_IN_WEI {
@@ -42,12 +42,12 @@ pub contract BountyRegistry {
         return self.lock.valid_until_block >= ctx.block_number()
     }
 
-    pub fn register_challenge(self, ctx: Context, challenge: address) {
+    pub fn register_challenge(mut self, ctx: Context, challenge: address) {
         self.validate_is_admin(ctx)
         self.open_challenges[challenge] = true
     }
 
-    pub fn remove_challenge(self, ctx: Context, challenge: address) {
+    pub fn remove_challenge(mut self, ctx: Context, challenge: address) {
         self.validate_is_admin(ctx)
 
         if self.is_locked(ctx) {
@@ -61,7 +61,7 @@ pub contract BountyRegistry {
         return self.open_challenges[challenge]
     }
 
-    pub fn claim(self, ctx: Context, challenge: address) {
+    pub fn claim(self, mut ctx: Context, challenge: address) {
         self.validate_owns_lock(ctx, owner: ctx.msg_sender())
 
         if not self.open_challenges[challenge] {
@@ -76,7 +76,7 @@ pub contract BountyRegistry {
         }
     }
 
-    pub fn withdraw(self, ctx: Context) {
+    pub fn withdraw(self, mut ctx: Context) {
         // Admin should be allowed to withdraw funds if there's no lock in progress
         // This would be used to migrate to a new bounty registry
         self.validate_is_admin(ctx)

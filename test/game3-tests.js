@@ -13,7 +13,7 @@ describe("Game 3", function () {
 
     expect(await game.callStatic.is_solved()).to.equal(false);
 
-    // Make winning move
+    //Make winning move
     await game.move_field(3, 3);
 
     expect(await game.callStatic.is_solved()).to.equal(true);
