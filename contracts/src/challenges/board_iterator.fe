@@ -11,8 +11,8 @@ pub struct BoardIterator {
         return self.has_next
     }
 
-    # Returns (row_idx, column_idx) or reverts if `has_next` is `false`
-    pub fn next(self) -> (u8, u8) {
+    // Returns (row_idx, column_idx) or reverts if `has_next` is `false`
+    pub fn next(mut self) -> (u8, u8) {
         if self.has_next == false {
             revert
         }

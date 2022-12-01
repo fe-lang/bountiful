@@ -11,12 +11,12 @@ describe("Game 3", function () {
     await registry.connect(admin).register_challenge(game.address);
     await registry.lock({value: ethers.utils.parseEther("1") });
 
-    expect(await game.callStatic.is_solved()).to.equal(false);
+    expect(await game.is_solved()).to.equal(false);
 
-    // Make winning move
+    //Make winning move
     await game.move_field(3, 3);
 
-    expect(await game.callStatic.is_solved()).to.equal(true);
+    expect(await game.is_solved()).to.equal(true);
   });
 
   it("Should revert when trying to move_field without having the lock", async function () {
@@ -26,7 +26,7 @@ describe("Game 3", function () {
 
     await registry.connect(admin).register_challenge(game.address);
 
-    expect(await game.callStatic.is_solved()).to.equal(false);
+    expect(await game.is_solved()).to.equal(false);
 
     // Make winning move
     await expect(game.move_field(3, 3)).to.be.reverted;

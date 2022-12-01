@@ -15,7 +15,7 @@ struct ValidateSuccessAction {
         return ValidateSuccessAction(error: false)
     }
     
-    pub fn error(self) {
+    pub fn error(mut self) {
         self.error = true
     }
 
@@ -25,7 +25,7 @@ struct ValidateSuccessAction {
 }
 
 impl ForEachAction for ValidateSuccessAction {
-    fn process(self, index: u8, is_final: bool, field: Field) {
+    fn process(mut self, index: u8, is_final: bool, field: Field) {
         if (is_final and field.get_value() != 0) or (not is_final and field.get_value() != index + 1) {
             self.error()
         }
@@ -37,24 +37,24 @@ trait SolveCheck {
 }
 
 
-# Once traits can be generic, we could use marker structs to avoid having to wrap `Board`
-# E.g. `impl SolveCheck<Simple> for Board`, `impl<SolveCheck<Fancy> for Board` etc.
-# See: https://stackoverflow.com/questions/65832862/multiple-implementations-for-the-same-trait-of-the-same-type-in-rust/65847940#65847940
+// Once traits can be generic, we could use marker structs to avoid having to wrap `Board`
+// E.g. `impl SolveCheck<Simple> for Board`, `impl<SolveCheck<Fancy> for Board` etc.
+// See: https://stackoverflow.com/questions/65832862/multiple-implementations-for-the-same-trait-of-the-same-type-in-rust/65847940#65847940
 struct SimpleSolveCheck {
     pub board: Board
 }
 
 impl SolveCheck for SimpleSolveCheck {
     fn is_solved(self) -> bool {
-        let board_iterator: BoardIterator = BoardIterator::new()
-        let value: u8 = 1
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut value: u8 = 1
 
         while board_iterator.has_next() {
             let (row, column): (u8, u8) = board_iterator.next()
             let field: Field = self.board.get_field_at(row, column)
 
             if not board_iterator.has_next() {
-                # The last item needs to be zero and the previous items should be ordered 1..15
+                // The last item needs to be zero and the previous items should be ordered 1..15
                 return field.get_value() == 0
             } else if field.get_value() != value {
                 return false
@@ -129,8 +129,8 @@ pub struct Board {
     state: Array<Array<Field, 4>, 4>
 
     pub fn new(_ init_state: Array<u8, 16>) -> Board {
-        let board_iterator: BoardIterator = BoardIterator::new()
-        let state: Array<Array<Field, 4>, 4> = [[Field::new(row: 0, column: 0, value: 0); 4]; 4]
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut state: Array<Array<Field, 4>, 4> = [[Field::new(row: 0, column: 0, value: 0); 4]; 4]
         for value in init_state {
             let (row, column): (u8, u8) = board_iterator.next()
             state[u256(row)][u256(column)] = Field::new(row, column, value)
@@ -185,7 +185,7 @@ pub struct Board {
         return self.state[u256(new_row)][u256(original_field.get_column())]
     }
 
-    pub fn move_field(self, row: u8, column: u8) {
+    pub fn move_field(mut self, row: u8, column: u8) {
         let original: Field = self.get_field_at(row, column)
         if original.has_neighbour_left() {
             let suspect: Field = self.get_neighbour_left(row, column)
@@ -220,8 +220,8 @@ pub struct Board {
     }
 
     pub fn for_each_field<T: ForEachAction>(self, action: T) {
-        let board_iterator: BoardIterator = BoardIterator::new()
-        let index: u8 = 0
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut index: u8 = 0
 
         while board_iterator.has_next() {
             let (row, column): (u8, u8) = board_iterator.next()
@@ -231,12 +231,10 @@ pub struct Board {
         }
     }
 
-    fn try_swap_fields(self, original: Field, suspect: Field) -> bool {
+    fn try_swap_fields(mut self, original: Field, suspect: Field) -> bool {
         if suspect.is_zero() {
-            # TODO: We should not need this since `new_value(..)` should allocate new memory.
-            let unchanged: Field = original.clone()
             self.state[u256(original.get_row())][u256(original.get_column())] = original.new_value(suspect.get_value())
-            self.state[u256(suspect.get_row())][u256(suspect.get_column())] = suspect.new_value(unchanged.get_value())
+            self.state[u256(suspect.get_row())][u256(suspect.get_column())] = suspect.new_value(original.get_value())
             return true
         }
         return false
@@ -248,7 +246,7 @@ pub contract Game3 {
     lock_validator: ILockValidator
     board: Board
 
-    pub fn __init__(self, lock_validator: address, board: Array<u8, 16>) {
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
         self.lock_validator = ILockValidator(lock_validator)
         self.board = Board::new(board)
     }
@@ -257,11 +255,11 @@ pub contract Game3 {
         return self.board.to_mem().is_solved(check: FancySolveCheck(board: self.board.to_mem()))
     }
 
-    pub fn move_field(self, ctx: Context, row: u8, column: u8){
-        self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
-        let board: Board = self.board.to_mem()
-        board.move_field(row, column)
-        self.board = board
+    pub fn move_field(mut self, ctx: Context, row: u8, column: u8){
+      self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+      let mut board: Board = self.board.to_mem()
+      board.move_field(row, column)
+      self.board = board
     }
 
 }
@@ -271,7 +269,7 @@ pub contract Game4 {
     lock_validator: ILockValidator
     board: Board
 
-    pub fn __init__(self, lock_validator: address, board: Array<u8, 16>) {
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
         self.lock_validator = ILockValidator(lock_validator)
         self.board = Board::new(board)
     }
@@ -280,9 +278,9 @@ pub contract Game4 {
         return self.board.to_mem().is_solved(check: SimpleSolveCheck(board: self.board.to_mem()))
     }
 
-    pub fn move_field(self, ctx: Context, row: u8, column: u8){
+    pub fn move_field(mut self, ctx: Context, row: u8, column: u8){
         self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
-        let board: Board = self.board.to_mem()
+        let mut board: Board = self.board.to_mem()
         board.move_field(row, column)
         self.board = board
     }

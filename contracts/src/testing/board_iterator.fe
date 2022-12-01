@@ -4,12 +4,12 @@ use ingot::challenges::board_iterator::BoardIterator
 pub contract BoardIteratorTest {
 
     pub fn __init__() {
-        let iter: BoardIterator = BoardIterator::new()
+        let mut iter: BoardIterator = BoardIterator::new()
         let (row_a, column_a): (u8, u8) = iter.next()
         assert row_a == 0
         assert column_a == 0
 
-        # TODO: File bug about not being able to compare tuple
+        // TODO: File bug about not being able to compare tuple
         let (row_b, column_b): (u8, u8) = iter.next()
         assert row_b == 0
         assert column_b == 1
