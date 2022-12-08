@@ -3,6 +3,8 @@ require("@developerdao/hardhat-fe");
 
 require("./scripts/deploy-task");
 require("./scripts/withdraw-task");
+require("./scripts/ischallenge-task");
+
 
 
 // This is a sample Hardhat task. To learn how to create your own go to
