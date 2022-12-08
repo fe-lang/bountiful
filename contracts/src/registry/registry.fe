@@ -61,7 +61,7 @@ pub contract BountyRegistry {
         return self.open_challenges[challenge]
     }
 
-    pub fn claim(self, mut ctx: Context, challenge: address) {
+    pub fn claim(mut self, mut ctx: Context, challenge: address) {
         self.validate_owns_lock(ctx, owner: ctx.msg_sender())
 
         if not self.open_challenges[challenge] {
@@ -70,6 +70,8 @@ pub contract BountyRegistry {
             let puzzle: ISolvable = ISolvable(challenge)
             if puzzle.is_solved() {
                 ctx.send_value(to: ctx.msg_sender(), wei: ctx.self_balance())
+                // Remove the solved challenge
+                self.open_challenges[challenge] = false
             } else {
                 revert InvalidClaim()
             }

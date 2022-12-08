@@ -138,6 +138,9 @@ describe("BountyRegistry", function () {
     // Claim bounty
     await registry.claim(game.address);
 
+    // Solved challenge got removed
+    expect(await registry.is_open_challenge(game.address)).to.be.false;
+
     expect(await registry.provider.getBalance(registry.address)).to.equal(0);
     let eric_latest_balance = await registry.provider.getBalance(eric.address);
 
