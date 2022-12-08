@@ -26,7 +26,7 @@ Bountiful is a registry for contracts that should uphold certain conditions. If 
 Unless the system is in `locked` state, the admin can withdraw the prize money at any time. This would be used to migrate
 to a newer version of the system.
 
-Run: `npx hardhat withdraw --network mainnet`
+Run: `npx hardhat withdraw <address-of-registry>--network mainnet`
 
 
 ## Claiming process
