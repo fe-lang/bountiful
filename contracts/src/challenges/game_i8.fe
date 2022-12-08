@@ -28,7 +28,7 @@ pub contract GameI8 {
         self.moves[u8(3)] = [2, 7, INVALID_FIELD_MARKER, INVALID_FIELD_MARKER]
         self.moves[u8(4)] = [0, 5, 8, INVALID_FIELD_MARKER]
         self.moves[u8(5)] = [1, 4, 6, 9]
-        self.moves[u8(6)] = [2, 5, 7, 1]
+        self.moves[u8(6)] = [2, 5, 7, 10]
         self.moves[u8(7)] = [3, 6, 11, INVALID_FIELD_MARKER]
         self.moves[u8(8)] = [4, 9, 12, INVALID_FIELD_MARKER]
         self.moves[u8(9)] = [5, 8, 10, 13]
