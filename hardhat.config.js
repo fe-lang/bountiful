@@ -3,7 +3,7 @@ require("@developerdao/hardhat-fe");
 
 require("./scripts/deploy-task");
 require("./scripts/withdraw-task");
-require("./scripts/ischallenge-task");
+require("./scripts/is-challenge-task");
 require("./scripts/remove-challenge-task");
 
 
