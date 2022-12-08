@@ -2,7 +2,7 @@ const { task } = require('hardhat/config');
 
 // npx hardhat withdraw --network goerli
 
-task("withdraw", "task to deploy the bountiful suite")
+task("withdraw", "task to withdraw the prize money")
   .addPositionalParam("registry")
   .setAction(async (taskArgs, hre) => {
     console.log(`Withdrawing on network ${hre.network.name} on registry contract ${taskArgs.registry}`);
