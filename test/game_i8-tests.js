@@ -20,7 +20,7 @@ describe("Game i8", function () {
     expect(await game.is_solved()).to.equal(true);
   });
 
-  it("The hack", async function () {
+  it("Should not solve the game", async function () {
 
     [registry, eric, admin] = await deployRegistry()
     const game = await deployGame("contracts/src/main.fe:GameI8", registry.address, INIT_STATE_UNSOLVABLE);
@@ -48,21 +48,23 @@ describe("Game i8", function () {
     await game.move_field(11);
     await game.move_field(7);
     await game.move_field(6);
-    await game.move_field(1)
-    await game.move_field(0);
-    await game.move_field(4);
-    await game.move_field(8);
-    await game.move_field(12);
-    await game.move_field(13);
-    await game.move_field(9);
-    await game.move_field(5);
-    await game.move_field(6);
-    await game.move_field(7);
-    await game.move_field(11);
-    await game.move_field(15);
-    expect(await game.is_solved()).to.equal(true);
+    // Now that the bug is fixed, this properly reverts. This move was possible,
+    // when the implementation had the bug that was fixed in 715df01940dcad6ac5c157809a33f4b52ff06a94
+    await expect(game.move_field(1)).to.be.reverted;
+    // These moves followed to bring the game into solved state but are now invalid due to the revert
+    // await game.move_field(0);
+    // await game.move_field(4);
+    // await game.move_field(8);
+    // await game.move_field(12);
+    // await game.move_field(13);
+    // await game.move_field(9);
+    // await game.move_field(5);
+    // await game.move_field(6);
+    // await game.move_field(7);
+    // await game.move_field(11);
+    // await game.move_field(15);
+    //expect(await game.is_solved()).to.equal(true);
   });
-
 
   it("Should revert when trying to move_field without having the lock", async function () {
 
