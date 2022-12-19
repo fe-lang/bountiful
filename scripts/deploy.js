@@ -1,5 +1,6 @@
 
 const { deployGame } = require('../test/utils.js');
+const { LIST_OF_CHALLENGES } = require('./constants.js');
 
 async function deployAll(deployer, admin, init_state, prize_money_in_eth) {
 
@@ -18,9 +19,7 @@ async function deployAll(deployer, admin, init_state, prize_money_in_eth) {
   await registry.deployed();
   console.log("Registry deployed to:", registry.address);
 
-  const games = ["Game", "GameI8", "Game3", "Game4"];
-
-  for (game of games) {
+  for (game of LIST_OF_CHALLENGES) {
     console.log(`Deploying: ${game}`);
     const deployedGame = await deployGame(`contracts/src/main.fe:${game}`, registry.address, init_state);
     console.log(`${game} deployed to: ${deployedGame.address}`);

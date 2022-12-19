@@ -1,0 +1,291 @@
+
+use std::context::Context
+use ingot::challenges::errors::{InvalidIndex, NotMovable}
+use ingot::challenges::board_iterator::BoardIterator
+use ingot::registry::lock_validator::ILockValidator
+
+enum FieldResult {
+    Ok(Field)
+    Err
+}
+
+enum Direction {
+    Left
+    Right
+    Above
+    Below
+}
+
+trait ForEachAction {
+    fn process(self, index: u8, is_final: bool, field: Field);
+}
+
+struct ValidateSuccessAction {
+    error: bool
+
+    pub fn new() -> ValidateSuccessAction {
+        return ValidateSuccessAction(error: false)
+    }
+    
+    pub fn error(mut self) {
+        self.error = true
+    }
+
+    pub fn is_success(self) -> bool {
+        return not self.error
+    }
+}
+
+impl ForEachAction for ValidateSuccessAction {
+    fn process(mut self, index: u8, is_final: bool, field: Field) {
+        if (is_final and field.get_value() != 0) or (not is_final and field.get_value() != index + 1) {
+            self.error()
+        }
+    }
+}
+
+trait SolveCheck {
+    fn is_solved(self) -> bool;
+}
+
+
+// Once traits can be generic, we could use marker structs to avoid having to wrap `Board`
+// E.g. `impl SolveCheck<Simple> for Board`, `impl<SolveCheck<Fancy> for Board` etc.
+// See: https://stackoverflow.com/questions/65832862/multiple-implementations-for-the-same-trait-of-the-same-type-in-rust/65847940#65847940
+struct SimpleSolveCheck {
+    pub board: Board
+}
+
+impl SolveCheck for SimpleSolveCheck {
+    fn is_solved(self) -> bool {
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut value: u8 = 1
+
+        while board_iterator.has_next() {
+            let (row, column): (u8, u8) = board_iterator.next()
+            match self.board.get_field_at(row, column) {
+                FieldResult::Ok(field) => {
+                    if not board_iterator.has_next() {
+                        // The last item needs to be zero and the previous items should be ordered 1..15
+                        return field.get_value() == 0
+                    } else if field.get_value() != value {
+                        return false
+                    }
+        
+                    value += 1
+                }
+                _ => { revert InvalidIndex() }
+            }
+        }
+
+        return true
+    }
+}
+
+struct FancySolveCheck {
+    pub board: Board
+}
+
+impl SolveCheck for FancySolveCheck {
+    fn is_solved(self) -> bool {
+        let action: ValidateSuccessAction = ValidateSuccessAction::new()
+        self.board.for_each_field(action)
+        return action.is_success()
+    }
+}
+
+pub struct Field {
+    row: u8
+    column: u8
+    value: u8
+
+    pub fn new(row: u8, column: u8, value: u8) -> Field {
+        return Field(row, column, value)
+    }
+
+    pub fn get_value(self) -> u8 {
+        return self.value
+    }
+
+    pub fn new_value(self, _ value: u8) -> Field {
+        return Field(row: self.row, column: self.column, value)
+    }
+
+    pub fn is_zero(self) -> bool {
+        return self.value == 0
+    }
+
+    pub fn get_row(self) -> u8 {
+        return self.row
+    }
+
+    pub fn get_column(self) -> u8 {
+        return self.column
+    }
+
+    pub fn has_neighbour(self, _ at_direction: Direction) -> bool {
+        match at_direction {
+            Direction::Left => { return self.column > 0 }
+            Direction::Right => { return self.column < 3 }
+            Direction::Above => { return self.row > 0 }
+            Direction::Below => { return self.row < 3 }
+        }
+    }
+}
+
+pub struct Board {
+    state: Array<Array<Field, 4>, 4>
+
+    pub fn new(_ init_state: Array<u8, 16>) -> Board {
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut state: Array<Array<Field, 4>, 4> = [[Field::new(row: 0, column: 0, value: 0); 4]; 4]
+        for value in init_state {
+            let (row, column): (u8, u8) = board_iterator.next()
+            state[u256(row)][u256(column)] = Field::new(row, column, value)
+        }
+        return Board(state)
+    }
+
+    pub fn get_field_at(self, row: u8, column: u8) -> FieldResult {
+        if not Board::is_valid_field(row, column) {
+            return FieldResult::Err
+        }
+        return FieldResult::Ok(self.state[u256(row)][u256(column)])
+    }
+
+    pub fn is_valid_field (row: u8, column: u8) -> bool {
+        return (row >= 0 and row <= 3) and (column >= 0 and column <= 3)
+    }
+
+    pub fn get_neighbour_at(self, row: u8, column: u8, _ direction: Direction) -> FieldResult {
+        match self.get_field_at(row, column) {
+            FieldResult::Ok(original_field) => {
+                if not original_field.has_neighbour(direction) {
+                    return FieldResult::Err
+                } else {
+                    match direction {
+                        Direction::Left => {
+                            let new_column: u8 = original_field.get_column() - 1
+                            return FieldResult::Ok(self.state[u256(original_field.get_row())][u256(new_column)])
+                        }
+                        Direction::Right => {
+                            let new_column: u8 = original_field.get_column() + 1
+                            return FieldResult::Ok(self.state[u256(original_field.get_row())][u256(new_column)])
+                        }
+                        Direction::Above => {
+                            let new_row: u8 = original_field.get_row() - 1
+                            return FieldResult::Ok(self.state[u256(new_row)][u256(original_field.get_column())])
+                        }
+                        Direction::Below => {
+                            let new_row: u8 = original_field.get_row() + 1
+                            return FieldResult::Ok(self.state[u256(new_row)][u256(original_field.get_column())])
+                        }
+                    }
+                }
+
+            }
+            _ => { return FieldResult::Err }
+        }
+    }
+
+
+
+    pub fn move_field(mut self, row: u8, column: u8) {
+        match self.get_field_at(row, column) {
+            FieldResult::Ok(original) => {
+                for direction in [Direction::Left, Direction::Above, Direction::Right, Direction::Below] {
+                    if original.has_neighbour(direction) {
+                        match self.get_neighbour_at(row, column, direction) {
+                            FieldResult::Ok(suspect) => {
+                                if self.try_swap_fields(original, suspect) {
+                                    return
+                                }
+                            }
+                            _ => {}
+                        }
+        
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        revert NotMovable()
+    }
+
+    pub fn is_solved<T: SolveCheck>(self, check: T) -> bool {
+        return check.is_solved()
+    }
+
+    pub fn for_each_field<T: ForEachAction>(self, action: T) {
+        let mut board_iterator: BoardIterator = BoardIterator::new()
+        let mut index: u8 = 0
+
+        while board_iterator.has_next() {
+            let (row, column): (u8, u8) = board_iterator.next()
+            match self.get_field_at(row, column) {
+                FieldResult::Ok(field) => {
+                    action.process(index, is_final: not board_iterator.has_next(), field)
+                    index += 1
+                }
+                _ => { revert InvalidIndex() }
+            }
+
+        }
+    }
+
+    fn try_swap_fields(mut self, original: Field, suspect: Field) -> bool {
+        if suspect.is_zero() {
+            self.state[u256(original.get_row())][u256(original.get_column())] = original.new_value(suspect.get_value())
+            self.state[u256(suspect.get_row())][u256(suspect.get_column())] = suspect.new_value(original.get_value())
+            return true
+        }
+        return false
+    }
+}
+
+pub contract Game5 {
+
+    lock_validator: ILockValidator
+    board: Board
+
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
+        self.lock_validator = ILockValidator(lock_validator)
+        self.board = Board::new(board)
+    }
+
+    pub fn is_solved(self) -> bool{
+        return self.board.to_mem().is_solved(check: FancySolveCheck(board: self.board.to_mem()))
+    }
+
+    pub fn move_field(mut self, ctx: Context, row: u8, column: u8){
+      self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+      let mut board: Board = self.board.to_mem()
+      board.move_field(row, column)
+      self.board = board
+    }
+
+}
+
+pub contract Game6 {
+
+    lock_validator: ILockValidator
+    board: Board
+
+    pub fn __init__(mut self, lock_validator: address, board: Array<u8, 16>) {
+        self.lock_validator = ILockValidator(lock_validator)
+        self.board = Board::new(board)
+    }
+
+    pub fn is_solved(self) -> bool{
+        return self.board.to_mem().is_solved(check: SimpleSolveCheck(board: self.board.to_mem()))
+    }
+
+    pub fn move_field(mut self, ctx: Context, row: u8, column: u8){
+        self.lock_validator.validate_owns_lock(owner: ctx.msg_sender())
+        let mut board: Board = self.board.to_mem()
+        board.move_field(row, column)
+        self.board = board
+    }
+
+}
