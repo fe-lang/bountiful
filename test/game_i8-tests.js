@@ -10,7 +10,7 @@ describe("Game i8", function () {
     const game = await deployGame("contracts/src/main.fe:GameI8", registry.address, INIT_STATE_SOLVABLE);
 
     await registry.connect(admin).register_challenge(game.address);
-    await registry.lock({value: ethers.utils.parseEther("1") });
+    await registry.lock({value: ethers.utils.parseEther("0.1") });
 
     expect(await game.is_solved()).to.equal(false);
 
@@ -26,7 +26,7 @@ describe("Game i8", function () {
     const game = await deployGame("contracts/src/main.fe:GameI8", registry.address, INIT_STATE_UNSOLVABLE);
 
     await registry.connect(admin).register_challenge(game.address);
-    await registry.lock({value: ethers.utils.parseEther("1") });
+    await registry.lock({value: ethers.utils.parseEther("0.1") });
 
     expect(await game.is_solved()).to.equal(false);
 

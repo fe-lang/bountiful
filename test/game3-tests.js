@@ -9,7 +9,7 @@ describe("Game 3", function () {
     const game = await deployGame("contracts/src/main.fe:Game3", registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
     await registry.connect(admin).register_challenge(game.address);
-    await registry.lock({value: ethers.utils.parseEther("1") });
+    await registry.lock({value: ethers.utils.parseEther("0.1") });
 
     expect(await game.is_solved()).to.equal(false);
 

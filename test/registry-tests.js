@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { deployDefaultGame, deployRegistry, mineBlocks } = require('./utils.js');
 
-const ONE_ETH = ethers.utils.parseEther("1.0");
+const DOT_ONE_ETH = ethers.utils.parseEther("0.1");
 
 
 describe("BountyRegistry", function () {
@@ -26,7 +26,7 @@ describe("BountyRegistry", function () {
 
     expect(await registry.is_locked()).to.be.false;
 
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
 
     expect(await registry.is_locked()).to.be.true;
   });
@@ -34,7 +34,7 @@ describe("BountyRegistry", function () {
   it("Should release lock after timeout", async function () {
     [registry, eric, admin] = await deployRegistry()
 
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
 
     expect(await registry.is_locked()).to.be.true;
 
@@ -86,7 +86,7 @@ describe("BountyRegistry", function () {
 
     expect(await registry.is_open_challenge(challenge)).to.be.true;
 
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
 
     await expect(registry.connect(admin).remove_challenge(challenge)).to.be.reverted;
   });
@@ -124,12 +124,12 @@ describe("BountyRegistry", function () {
 
     let eric_initial_balance = await registry.provider.getBalance(eric.address);
     expect(await registry.provider.getBalance(registry.address)).to.equal(ethers.utils.parseEther("10"));
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
     let eric_new_balance = await registry.provider.getBalance(eric.address);
 
     // It doesn't match exactly. Probably because of what is lost to tx fees
-    expect(eric_new_balance.lte(eric_initial_balance.sub(ONE_ETH))).to.be.true;
-    expect(await registry.provider.getBalance(registry.address)).to.equal(ethers.utils.parseEther("11"));
+    expect(eric_new_balance.lte(eric_initial_balance.sub(DOT_ONE_ETH))).to.be.true;
+    expect(await registry.provider.getBalance(registry.address)).to.equal(ethers.utils.parseEther("10.1"));
     expect(await game.is_solved()).to.be.false;
 
     // Make winning move
@@ -158,7 +158,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.is_open_challenge(game.address)).to.be.true;
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
     expect(await game.is_solved()).to.be.false;
 
     // Make winning move
@@ -194,7 +194,7 @@ describe("BountyRegistry", function () {
     // Deploy challenge
     const game = await deployDefaultGame(registry.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
 
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
     expect(await game.is_solved()).to.be.false;
 
     // Make winning move
@@ -215,7 +215,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.is_open_challenge(game.address)).to.be.true;
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
     expect(await game.is_solved()).to.be.false;
     // Claim bounty
     await expect(registry.claim(game.address)).to.be.reverted;
@@ -252,7 +252,7 @@ describe("BountyRegistry", function () {
 
     await registry.connect(admin).register_challenge(game.address);
     expect(await registry.is_open_challenge(game.address)).to.be.true;
-    await registry.lock({value: ONE_ETH });
+    await registry.lock({value: DOT_ONE_ETH });
 
     await expect(registry.connect(admin).withdraw()).to.be.reverted;
   });

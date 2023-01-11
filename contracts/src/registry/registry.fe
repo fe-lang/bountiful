@@ -10,7 +10,7 @@ struct ClaimLock  {
 }
 
 const LOCK_PERIOD_IN_BLOCKS: u256 = 1000
-const LOCK_DEPOSIT_IN_WEI: u256 = 1_000_000_000_000_000_000
+const LOCK_DEPOSIT_IN_WEI: u256 = 100_000_000_000_000_000 // 0.1 ETH 
 
 pub contract BountyRegistry {
 
