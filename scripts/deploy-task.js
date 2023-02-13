@@ -4,10 +4,14 @@ const {INIT_STATE_SOLVABLE, PRIZE_MONEY_IN_ETH, INIT_STATE_UNSOLVABLE} = require
 
 // npx hardhat deploy --network goerli (--solvable and --funded)
 
+
 task("deploy", "task to deploy the bountiful suite")
   .addFlag("solvable")
   .addFlag("funded")
   .setAction(async (taskArgs, hre) => {
+
+    await hre.run("compile");
+
     console.log(`Deploying on network ${hre.network.name}`);
     
     const init_state = taskArgs.solvable ? INIT_STATE_SOLVABLE : INIT_STATE_UNSOLVABLE;

@@ -5,6 +5,7 @@ require("./scripts/deploy-task");
 require("./scripts/withdraw-task");
 require("./scripts/is-challenge-task");
 require("./scripts/remove-challenge-task");
+require("./scripts/deploy-challenge-task");
 
 
 

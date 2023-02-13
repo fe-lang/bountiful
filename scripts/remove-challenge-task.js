@@ -1,11 +1,14 @@
 const { task } = require('hardhat/config');
 
-// npx hardhat withdraw --network goerli
+// npx hardhat remove-challenge <registry_address> <challenge_address> --network goerli
 
 task("remove-challenge", "task to remove a challenge")
   .addPositionalParam("registry")
   .addPositionalParam("challenge")
   .setAction(async (taskArgs, hre) => {
+
+    await hre.run("compile");
+
     console.log(`Removing challenge ${taskArgs.challenge} on network ${hre.network.name} on registry contract ${taskArgs.registry}`);
     
     if (hre.network.name === "goerli") {
