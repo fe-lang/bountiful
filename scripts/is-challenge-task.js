@@ -7,29 +7,7 @@ task("is-challenge", "task to check if an address is a registered challenge")
   .addPositionalParam("challenge")
   .setAction(async (taskArgs, hre) => {
     console.log(`Checking on network ${hre.network.name} on registry contract ${taskArgs.registry}`);
-    
-    if (hre.network.name === "goerli") {
-      if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`);
-        return
-      }
-
-      await is_challenge(taskArgs.registry, taskArgs.challenge)
-    } else if (hre.network.name === "mainnet") {
-
-      if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`);
-        return
-      }
-
-      await is_challenge(taskArgs.registry, taskArgs.challenge)
-    } else {
-      await is_challenge(taskArgs.registry, taskArgs.challenge)
-    }
+    await is_challenge(taskArgs.registry, taskArgs.challenge)
   });
 
   async function is_challenge(registry_address, challenge_address) {

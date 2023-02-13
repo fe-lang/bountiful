@@ -1,4 +1,5 @@
 const { task } = require('hardhat/config');
+const { getDeployerAndAdmin } = require('../test/utils.js');
 
 // npx hardhat withdraw --network goerli
 
@@ -6,33 +7,14 @@ task("withdraw", "task to withdraw the prize money")
   .addPositionalParam("registry")
   .setAction(async (taskArgs, hre) => {
     console.log(`Withdrawing on network ${hre.network.name} on registry contract ${taskArgs.registry}`);
-    
-    if (hre.network.name === "goerli") {
-      if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`);
-        return
-      }
 
-      const admin = await hre.ethers.getSigner(process.env.GOERLI_ADMIN);
+    try {
+      let [deployer, admin] = await getDeployerAndAdmin();
       await withdraw(admin, taskArgs.registry)
-    } else if (hre.network.name === "mainnet") {
-
-      if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`);
-        return
-      }
-
-      const admin = await hre.ethers.getSigner(process.env.MAINNET_ADMIN);
-      await withdraw(admin, taskArgs.registry)
-    } else {
-      const admin = await hre.ethers.getSigner();
-      await withdraw(admin, taskArgs.registry)
+    } catch (err) {
+      console.log(err);
     }
-  });
+});
 
   async function withdraw(admin, address) {
     const BountyRegistryFactory = await ethers.getContractFactory("BountyRegistry");

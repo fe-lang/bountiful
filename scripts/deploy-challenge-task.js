@@ -1,6 +1,6 @@
 const { task } = require('hardhat/config');
 const {INIT_STATE_SOLVABLE, INIT_STATE_UNSOLVABLE} = require('./constants.js');
-const { deployGame } = require('../test/utils.js');
+const { deployGame, getDeployerAndAdmin } = require('../test/utils.js');
 
 // npx hardhat deploy-challenge <registry_adress> <challenge_name> --network goerli (--solvable)
 
@@ -14,36 +14,12 @@ task("deploy-challenge", "task to deploy and add a single challenge to an existi
     console.log(`Deploying on network ${hre.network.name}`);
 
     const init_state = taskArgs.solvable ? INIT_STATE_SOLVABLE : INIT_STATE_UNSOLVABLE;
-
-    if (hre.network.name === "goerli") {
-      if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`);
-        return
-      }
-
-      const deployer = await hre.ethers.getSigner(process.env.GOERLI_DEPLOYER);
-      const admin = await hre.ethers.getSigner(process.env.GOERLI_ADMIN);
+    try {
+      let [deployer, admin] = await getDeployerAndAdmin();
       await deploySingleChallenge(deployer, admin, init_state, taskArgs.registry, taskArgs.challengeName)
-    } else if (hre.network.name === "mainnet") {
-
-      if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS === undefined) {
-        console.log(`Check ENV Vars`);
-        console.error(`ENV Vars MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`);
-        console.error(`ENV Vars MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`);
-        return
-      }
-
-      const deployer = await hre.ethers.getSigner(process.env.MAINNET_DEPLOYER);
-      const admin = await hre.ethers.getSigner(process.env.MAINNET_ADMIN);
-      await deploySingleChallenge(deployer, admin, init_state, taskArgs.registry, taskArgs.challengeName)
-    } else {
-      const deployer = await hre.ethers.getSigner();
-      const admin = await hre.ethers.getSigner();
-      await deploySingleChallenge(deployer, admin, init_state, taskArgs.registry, taskArgs.challengeName)
+    } catch (err) {
+      console.log(err);
     }
-
   });
 
 

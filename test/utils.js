@@ -35,8 +35,40 @@ async function deployContract(identifier) {
   return target
 }
 
+async function getDeployerAndAdmin() {
+  if (hre.network.name === "goerli") {
+    if (process.env.GOERLI_DEPLOYER_ADDRESS === undefined || process.env.GOERLI_ADMIN_ADDRESS === undefined) {
+      console.log(`Check ENV Vars`);
+      console.error(`ENV Vars GOERLI_DEPLOYER_ADDRESS: ${process.env.GOERLI_DEPLOYER_ADDRESS}`);
+      console.error(`ENV Vars GOERLI_ADMIN_ADDRESS: ${process.env.GOERLI_ADMIN_ADDRESS}`);
+      throw new Error("Missing ENV vars")
+    }
+
+    const deployer = await hre.ethers.getSigner(process.env.GOERLI_DEPLOYER);
+    const admin = await hre.ethers.getSigner(process.env.GOERLI_ADMIN);
+    return [deployer, admin]
+  } else if (hre.network.name === "mainnet") {
+
+    if (process.env.MAINNET_DEPLOYER_ADDRESS === undefined || process.env.MAINNET_ADMIN_ADDRESS === undefined) {
+      console.log(`Check ENV Vars`);
+      console.error(`ENV Vars MAINNET_DEPLOYER_ADDRESS: ${process.env.MAINNET_DEPLOYER_ADDRESS}`);
+      console.error(`ENV Vars MAINNET_ADMIN_ADDRESS: ${process.env.MAINNET_ADMIN_ADDRESS}`);
+      throw new Error("Missing ENV vars")
+    }
+
+    const deployer = await hre.ethers.getSigner(process.env.MAINNET_DEPLOYER);
+    const admin = await hre.ethers.getSigner(process.env.MAINNET_ADMIN);
+    return [deployer, admin]
+  } else {
+    const deployer = await hre.ethers.getSigner();
+    const admin = await hre.ethers.getSigner();
+    return [deployer, admin]
+  }
+}
+
 exports.mineBlocks = mineBlocks
 exports.deployGame = deployGame
 exports.deployRegistry = deployRegistry
 exports.deployDefaultGame = deployDefaultGame
 exports.deployContract = deployContract
+exports.getDeployerAndAdmin = getDeployerAndAdmin
