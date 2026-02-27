@@ -8,12 +8,10 @@ use ingot::{
     ERR_NOT_MOVABLE,
     ERR_MISSING_LOCK,
     ERR_ALREADY_INITIALIZED,
-    INVALID_MOVE,
-    encode_moves,
-    is_movable_to,
     winning_value,
     LockValidatorMsg,
 }
+use ingot::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
 use ingot::registry::{BountyRegistry, RegistryMsg}
 
 pub msg GameMsg {

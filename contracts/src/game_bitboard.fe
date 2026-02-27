@@ -15,11 +15,9 @@ use ingot::{
     ERR_NOT_MOVABLE,
     ERR_MISSING_LOCK,
     ERR_ALREADY_INITIALIZED,
-    INVALID_MOVE,
-    encode_moves,
-    is_movable_to,
     LockValidatorMsg,
 }
+use ingot::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
 use ingot::registry::{BountyRegistry, RegistryMsg}
 
 fn get_cell(board: u256, index: u256) -> u256 {
