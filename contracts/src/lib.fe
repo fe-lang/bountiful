@@ -18,6 +18,7 @@ pub const ERR_ALREADY_LOCKED: u256 = 10
 pub const ERR_INVALID_CLAIM: u256 = 11
 pub const ERR_ONLY_ADMIN: u256 = 12
 pub const ERR_ALREADY_INITIALIZED: u256 = 13
+pub const ERR_INVALID_DEPOSIT: u256 = 14
 
 // =============================================================================
 // Game constants

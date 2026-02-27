@@ -197,7 +197,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_enum_solved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 300)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 300)
     let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 301)
 
     // Set solved board
@@ -217,7 +217,7 @@ fn test_enum_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_enum_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 310)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 310)
     let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 311)
 
     // Board: [1..14, 0, 15]

@@ -138,7 +138,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 0)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 0)
     assert(registry.inner != 0)
 
     // Deploy game with solved board
@@ -168,7 +168,7 @@ fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_unsolved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 10)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 10)
     let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 11)
 
     // Board: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,0,15] — swapped last two
@@ -186,7 +186,7 @@ fn test_game_unsolved() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 20)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 20)
     let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 21)
 
     // Board: [1..14, 0, 15] — empty at 14
@@ -213,7 +213,7 @@ fn test_game_move_and_solve() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_invalid_move() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 30)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 30)
     let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 31)
 
     // Board: [1..14, 0, 15]
@@ -235,7 +235,7 @@ fn test_game_invalid_move() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_move_without_lock() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 40)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 40)
     let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 41)
 
     // Set a board cell

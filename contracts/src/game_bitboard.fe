@@ -162,7 +162,7 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_bitboard_solved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 100)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 100)
     let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 101)
 
     // Set solved board: [1,2,3,...,15,0]
@@ -185,7 +185,7 @@ fn test_bitboard_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 110)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 110)
     let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 111)
 
     // Board: [1..14, 0, 15] — empty at 14
