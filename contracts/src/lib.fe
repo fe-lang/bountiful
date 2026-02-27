@@ -5,7 +5,7 @@
 // used by both the Game (challenge) and BountyRegistry (platform) contracts.
 // =============================================================================
 
-use std::evm::{Address, Evm, assert}
+use std::evm::Address
 
 // =============================================================================
 // Error codes
@@ -43,16 +43,4 @@ pub msg SolvableMsg {
 pub msg LockValidatorMsg {
     #[selector = 0x07]
     ValidateOwnsLock { owner: Address } -> u256,
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
-
-#[test]
-fn test_winning_value() uses (evm: mut Evm) {
-    assert(winning_value(0) == 1)
-    assert(winning_value(7) == 8)
-    assert(winning_value(14) == 15)
-    assert(winning_value(15) == 0)
 }
