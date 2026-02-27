@@ -1,0 +1,120 @@
+// =============================================================================
+// BountyRegistry contract — Bug bounty platform
+// =============================================================================
+
+use std::evm::{Address, Ctx, Call, StorageMap}
+use ingot::{
+    ERR_ALREADY_LOCKED,
+    ERR_MISSING_LOCK,
+    ERR_ONLY_ADMIN,
+    ERR_INVALID_CLAIM,
+    LOCK_PERIOD,
+    SolvableMsg,
+}
+
+pub msg RegistryMsg {
+    #[selector = 0x01]
+    Lock -> u256,
+    #[selector = 0x02]
+    IsLocked -> u256,
+    #[selector = 0x03]
+    RegisterChallenge { challenge_inner: u256 } -> u256,
+    #[selector = 0x04]
+    RemoveChallenge { challenge_inner: u256 } -> u256,
+    #[selector = 0x05]
+    IsOpenChallenge { challenge_inner: u256 } -> u256,
+    #[selector = 0x06]
+    Claim { challenge_inner: u256 } -> u256,
+    #[selector = 0x07]
+    ValidateOwnsLock { owner_inner: u256 } -> u256,
+}
+
+struct RegistryStore {
+    lock_claimer_inner: u256,
+    lock_valid_until_block: u256,
+    admin_inner: u256,
+    open_challenges: StorageMap<u256, u256>,
+}
+
+pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
+    mut store: RegistryStore
+
+    init(admin_inner: u256) uses (mut store) {
+        store.admin_inner = admin_inner
+        store.lock_claimer_inner = 0
+        store.lock_valid_until_block = 0
+    }
+
+    recv RegistryMsg {
+        Lock -> u256 uses (mut store, ctx) {
+            if store.lock_valid_until_block > 0 {
+                return ERR_ALREADY_LOCKED
+            }
+            store.lock_claimer_inner = ctx.caller().inner
+            store.lock_valid_until_block = LOCK_PERIOD
+            return 0
+        }
+
+        IsLocked -> u256 uses (store) {
+            if store.lock_valid_until_block > 0 { 1 } else { 0 }
+        }
+
+        RegisterChallenge { challenge_inner } -> u256 uses (mut store, ctx) {
+            if ctx.caller().inner != store.admin_inner {
+                return ERR_ONLY_ADMIN
+            }
+            store.open_challenges.set(key: challenge_inner, value: 1)
+            return 0
+        }
+
+        RemoveChallenge { challenge_inner } -> u256 uses (mut store, ctx) {
+            if ctx.caller().inner != store.admin_inner {
+                return ERR_ONLY_ADMIN
+            }
+            if store.lock_valid_until_block > 0 {
+                return ERR_ALREADY_LOCKED
+            }
+            store.open_challenges.set(key: challenge_inner, value: 0)
+            return 0
+        }
+
+        IsOpenChallenge { challenge_inner } -> u256 uses (store) {
+            store.open_challenges.get(key: challenge_inner)
+        }
+
+        Claim { challenge_inner } -> u256 uses (mut store, ctx, mut call) {
+            if store.lock_claimer_inner != ctx.caller().inner {
+                return ERR_MISSING_LOCK
+            }
+            if store.lock_valid_until_block == 0 {
+                return ERR_MISSING_LOCK
+            }
+            if store.open_challenges.get(key: challenge_inner) != 1 {
+                return ERR_INVALID_CLAIM
+            }
+            // Cross-contract call to check if puzzle is solved
+            let challenge_addr = Address { inner: challenge_inner }
+            let solved: u256 = call.call(
+                addr: challenge_addr,
+                gas: 100000,
+                value: 0,
+                message: SolvableMsg::IsSolved {}
+            )
+            if solved != 1 {
+                return ERR_INVALID_CLAIM
+            }
+            store.open_challenges.set(key: challenge_inner, value: 0)
+            return 0
+        }
+
+        ValidateOwnsLock { owner_inner } -> u256 uses (store) {
+            if store.lock_claimer_inner != owner_inner {
+                return ERR_MISSING_LOCK
+            }
+            if store.lock_valid_until_block == 0 {
+                return ERR_MISSING_LOCK
+            }
+            return 0
+        }
+    }
+}

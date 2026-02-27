@@ -1,0 +1,73 @@
+// =============================================================================
+// Bountiful — Shared definitions
+//
+// Error codes, constants, helper functions, and cross-contract msg interfaces
+// used by both the Game (challenge) and BountyRegistry (platform) contracts.
+// =============================================================================
+
+use std::evm::Address
+
+// =============================================================================
+// Error codes
+// =============================================================================
+
+pub const ERR_INVALID_INDEX: u256 = 1
+pub const ERR_NOT_MOVABLE: u256 = 2
+pub const ERR_MISSING_LOCK: u256 = 3
+pub const ERR_ALREADY_LOCKED: u256 = 10
+pub const ERR_INVALID_CLAIM: u256 = 11
+pub const ERR_ONLY_ADMIN: u256 = 12
+pub const ERR_ALREADY_INITIALIZED: u256 = 13
+
+// =============================================================================
+// Game constants
+// =============================================================================
+
+pub const INVALID_MOVE: u256 = 666
+pub const LOCK_PERIOD: u256 = 1000
+
+// =============================================================================
+// Move encoding helpers
+// =============================================================================
+
+pub fn encode_moves(m0: u256, m1: u256, m2: u256, m3: u256) -> u256 {
+    m0 + m1 * 1000 + m2 * 1000000 + m3 * 1000000000
+}
+
+pub fn decode_move(encoded: u256, slot: u256) -> u256 {
+    if slot == 0 { return encoded % 1000 }
+    if slot == 1 { return (encoded / 1000) % 1000 }
+    if slot == 2 { return (encoded / 1000000) % 1000 }
+    return (encoded / 1000000000) % 1000
+}
+
+pub fn is_movable_to(encoded_moves: u256, target: u256) -> bool {
+    let mut s: u256 = 0
+    while s < 4 {
+        if decode_move(encoded_moves, s) == target {
+            return true
+        }
+        s += 1
+    }
+    return false
+}
+
+pub fn winning_value(index: u256) -> u256 {
+    if index == 15 { return 0 }
+    return index + 1
+}
+
+// =============================================================================
+// Cross-contract message interfaces
+// =============================================================================
+
+pub msg SolvableMsg {
+    #[selector = 0x02]
+    IsSolved -> u256,
+}
+
+pub msg LockValidatorMsg {
+    #[selector = 0x07]
+    ValidateOwnsLock { owner_inner: u256 } -> u256,
+}
+
