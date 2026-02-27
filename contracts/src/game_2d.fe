@@ -8,6 +8,7 @@
 // 2D indexing board[row][col], coordinate arithmetic, while loops.
 // =============================================================================
 
+use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
@@ -25,13 +26,13 @@ fn winning_value_2d(row: usize, col: usize) -> u256 {
 }
 
 pub msg Game2DMsg {
-    #[selector = 0x01]
+    #[selector = sol("getBoard(uint256,uint256)")]
     GetBoard { row: u256, col: u256 } -> u256,
-    #[selector = 0x02]
+    #[selector = sol("isSolved()")]
     IsSolved -> u256,
-    #[selector = 0x03]
+    #[selector = sol("moveField(uint256,uint256)")]
     MoveField { row: u256, col: u256 } -> u256,
-    #[selector = 0x04]
+    #[selector = sol("setCell2D(uint256,uint256,uint256)")]
     SetCell2D { row: u256, col: u256, value: u256 } -> u256,
 }
 

@@ -2,6 +2,7 @@
 // BountyRegistry contract — Bug bounty platform
 // =============================================================================
 
+use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use std::evm::ops
 use ingot::{
@@ -16,23 +17,23 @@ use ingot::{
 use ingot::game::{Game, GameMsg}
 
 pub msg RegistryMsg {
-    #[selector = 0x01]
+    #[selector = sol("lock()")]
     Lock -> u256,
-    #[selector = 0x02]
+    #[selector = sol("isLocked()")]
     IsLocked -> u256,
-    #[selector = 0x03]
+    #[selector = sol("registerChallenge(address)")]
     RegisterChallenge { challenge: Address } -> u256,
-    #[selector = 0x04]
+    #[selector = sol("removeChallenge(address)")]
     RemoveChallenge { challenge: Address } -> u256,
-    #[selector = 0x05]
+    #[selector = sol("isOpenChallenge(address)")]
     IsOpenChallenge { challenge: Address } -> u256,
-    #[selector = 0x06]
+    #[selector = sol("claim(address)")]
     Claim { challenge: Address } -> u256,
-    #[selector = 0x07]
+    #[selector = sol("validateOwnsLock(address)")]
     ValidateOwnsLock { owner: Address } -> u256,
-    #[selector = 0x08]
+    #[selector = sol("withdraw()")]
     Withdraw -> u256,
-    #[selector = 0x09]
+    #[selector = sol("getBalance()")]
     GetBalance -> u256,
 }
 

@@ -2,6 +2,7 @@
 // Game contract — 15-puzzle challenge with flat board in StorageMap
 // =============================================================================
 
+use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
@@ -15,13 +16,13 @@ use ingot::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
 use ingot::registry::{BountyRegistry, RegistryMsg}
 
 pub msg GameMsg {
-    #[selector = 0x01]
+    #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
-    #[selector = 0x02]
+    #[selector = sol("isSolved()")]
     IsSolved -> u256,
-    #[selector = 0x03]
+    #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
-    #[selector = 0x04]
+    #[selector = sol("setCell(uint256,uint256)")]
     SetCell { index: u256, value: u256 } -> u256,
 }
 

@@ -9,6 +9,7 @@
 // single u256 storage field, helper functions with bit arithmetic.
 // =============================================================================
 
+use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
@@ -44,13 +45,13 @@ fn winning_board() -> u256 {
 }
 
 pub msg GameBitboardMsg {
-    #[selector = 0x01]
+    #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
-    #[selector = 0x02]
+    #[selector = sol("isSolved()")]
     IsSolved -> u256,
-    #[selector = 0x03]
+    #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
-    #[selector = 0x04]
+    #[selector = sol("setCell(uint256,uint256)")]
     SetCell { index: u256, value: u256 } -> u256,
 }
 

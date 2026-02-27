@@ -5,6 +5,7 @@
 // used by both the Game (challenge) and BountyRegistry (platform) contracts.
 // =============================================================================
 
+use std::abi::sol
 use std::evm::Address
 
 // =============================================================================
@@ -36,11 +37,11 @@ pub fn winning_value(index: u256) -> u256 {
 // =============================================================================
 
 pub msg SolvableMsg {
-    #[selector = 0x02]
+    #[selector = sol("isSolved()")]
     IsSolved -> u256,
 }
 
 pub msg LockValidatorMsg {
-    #[selector = 0x07]
+    #[selector = sol("validateOwnsLock(address)")]
     ValidateOwnsLock { owner: Address } -> u256,
 }

@@ -9,6 +9,7 @@
 // method calls, [u256; 16] fixed array in storage.
 // =============================================================================
 
+use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
@@ -65,13 +66,13 @@ fn winning_value_enum(index: usize) -> u256 {
 }
 
 pub msg GameEnumMsg {
-    #[selector = 0x01]
+    #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
-    #[selector = 0x02]
+    #[selector = sol("isSolved()")]
     IsSolved -> u256,
-    #[selector = 0x03]
+    #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
-    #[selector = 0x04]
+    #[selector = sol("setCell(uint256,uint256)")]
     SetCell { index: u256, value: u256 } -> u256,
 }
 
