@@ -9,7 +9,7 @@
 // single u256 storage field, helper functions with bit arithmetic.
 // =============================================================================
 
-use std::evm::{Address, Ctx, Call, StorageMap}
+use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
@@ -20,6 +20,7 @@ use ingot::{
     is_movable_to,
     LockValidatorMsg,
 }
+use ingot::registry::{BountyRegistry, RegistryMsg}
 
 fn get_cell(board: u256, index: u256) -> u256 {
     (board >> (index * 4)) & 0xF
@@ -153,4 +154,57 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
             return 0
         }
     }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[test]
+fn test_bitboard_solved() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 100)
+    let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 101)
+
+    // Set solved board: [1,2,3,...,15,0]
+    let mut i: u256 = 0
+    while i < 15 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 0 })
+
+    // Check a few cells
+    let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::GetBoard { index: 0 })
+    assert(v0 == 1)
+    let v14: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::GetBoard { index: 14 })
+    assert(v14 == 15)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(solved == 1)
+}
+
+#[test]
+fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 110)
+    let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 111)
+
+    // Board: [1..14, 0, 15] — empty at 14
+    let mut i: u256 = 0
+    while i < 14 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 14, value: 0 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 15 })
+
+    // Lock
+    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    assert(lock_res == 0)
+
+    // Move field at index 15 next to empty at 14
+    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 15 })
+    assert(move_res == 0)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(solved == 1)
 }

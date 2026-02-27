@@ -8,7 +8,7 @@
 // 2D indexing board[row][col], coordinate arithmetic, while loops.
 // =============================================================================
 
-use std::evm::{Address, Ctx, Call}
+use std::evm::{Address, Ctx, Call, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
@@ -16,6 +16,7 @@ use ingot::{
     ERR_ALREADY_INITIALIZED,
     LockValidatorMsg,
 }
+use ingot::registry::{BountyRegistry, RegistryMsg}
 
 fn winning_value_2d(row: usize, col: usize) -> u256 {
     let index = row * 4 + col
@@ -134,4 +135,66 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
             return 0
         }
     }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[test]
+fn test_2d_solved() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 200)
+    let game = evm.create2<Game2D>(value: 0, args: (registry.inner,), salt: 201)
+
+    // Set solved board row by row: [1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,0]
+    let mut row: u256 = 0
+    while row < 4 {
+        let mut col: u256 = 0
+        while col < 4 {
+            let index = row * 4 + col
+            let value = if index == 15 { 0 } else { index + 1 }
+            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
+            col += 1
+        }
+        row += 1
+    }
+
+    // Check a few cells
+    let v00: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 0, col: 0 })
+    assert(v00 == 1)
+    let v12: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 1, col: 2 })
+    assert(v12 == 7)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
+    assert(solved == 1)
+}
+
+#[test]
+fn test_2d_move_and_solve() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 210)
+    let game = evm.create2<Game2D>(value: 0, args: (registry.inner,), salt: 211)
+
+    // Board: solved except last two swapped — (3,2)=0, (3,3)=15
+    let mut row: u256 = 0
+    while row < 4 {
+        let mut col: u256 = 0
+        while col < 4 {
+            let index = row * 4 + col
+            let value = if index == 14 { 0 } else if index == 15 { 15 } else { index + 1 }
+            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
+            col += 1
+        }
+        row += 1
+    }
+
+    // Lock
+    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    assert(lock_res == 0)
+
+    // Move (3,3) — adjacent to empty at (3,2)
+    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
+    assert(move_res == 0)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
+    assert(solved == 1)
 }

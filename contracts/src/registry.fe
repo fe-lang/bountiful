@@ -2,7 +2,7 @@
 // BountyRegistry contract — Bug bounty platform
 // =============================================================================
 
-use std::evm::{Address, Ctx, Call, StorageMap}
+use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use ingot::{
     ERR_ALREADY_LOCKED,
     ERR_MISSING_LOCK,
@@ -11,6 +11,7 @@ use ingot::{
     LOCK_PERIOD,
     SolvableMsg,
 }
+use ingot::game::{Game, GameMsg}
 
 pub msg RegistryMsg {
     #[selector = 0x01]
@@ -116,5 +117,78 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             }
             return 0
         }
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[test]
+fn test_registry_lock() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 50)
+
+    // Initially not locked
+    let locked: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::IsLocked {})
+    assert(locked == 0)
+
+    // Lock
+    let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    assert(res == 0)
+
+    // Now locked
+    let locked: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::IsLocked {})
+    assert(locked == 1)
+
+    // Can't lock again
+    let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    assert(res == ERR_ALREADY_LOCKED)
+}
+
+#[test]
+fn test_full_bounty_flow() uses (evm: mut Evm) {
+    // Deploy registry
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 60)
+
+    // Deploy solved game
+    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 61)
+    let mut i: u256 = 0
+    while i < 15 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
+
+    // Register challenge
+    let reg_res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RegisterChallenge { challenge_inner: game.inner }
+    )
+
+    if reg_res == 0 {
+        // Verify open
+        let is_open: u256 = evm.call(
+            addr: registry, gas: 100000, value: 0,
+            message: RegistryMsg::IsOpenChallenge { challenge_inner: game.inner }
+        )
+        assert(is_open == 1)
+
+        // Lock
+        let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+        assert(lock_res == 0)
+
+        // Claim (game is solved)
+        let claim_res: u256 = evm.call(
+            addr: registry, gas: 500000, value: 0,
+            message: RegistryMsg::Claim { challenge_inner: game.inner }
+        )
+        assert(claim_res == 0)
+
+        // Challenge closed
+        let is_open: u256 = evm.call(
+            addr: registry, gas: 100000, value: 0,
+            message: RegistryMsg::IsOpenChallenge { challenge_inner: game.inner }
+        )
+        assert(is_open == 0)
     }
 }

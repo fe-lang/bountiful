@@ -9,7 +9,7 @@
 // method calls, [u256; 16] fixed array in storage.
 // =============================================================================
 
-use std::evm::{Address, Ctx, Call}
+use std::evm::{Address, Ctx, Call, Evm, assert}
 use ingot::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
@@ -17,6 +17,7 @@ use ingot::{
     ERR_ALREADY_INITIALIZED,
     LockValidatorMsg,
 }
+use ingot::registry::{BountyRegistry, RegistryMsg}
 
 enum Direction {
     Up,
@@ -188,4 +189,54 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
             return 0
         }
     }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[test]
+fn test_enum_solved() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 300)
+    let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 301)
+
+    // Set solved board
+    let mut i: u256 = 0
+    while i < 15 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: 15, value: 0 })
+
+    let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::GetBoard { index: 0 })
+    assert(v0 == 1)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
+    assert(solved == 1)
+}
+
+#[test]
+fn test_enum_move_and_solve() uses (evm: mut Evm) {
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (0,), salt: 310)
+    let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 311)
+
+    // Board: [1..14, 0, 15]
+    let mut i: u256 = 0
+    while i < 14 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: 14, value: 0 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: 15, value: 15 })
+
+    // Lock
+    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    assert(lock_res == 0)
+
+    // Move field at index 15 next to empty at 14
+    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 15 })
+    assert(move_res == 0)
+
+    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
+    assert(solved == 1)
 }
