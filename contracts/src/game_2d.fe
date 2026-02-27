@@ -1,0 +1,137 @@
+// =============================================================================
+// Game2D — 15-puzzle with 2D nested array storage [[u256; 4]; 4]
+//
+// Board is stored as a 4x4 grid accessed via (row, col) coordinates.
+// Adjacency is computed from coordinates (no lookup table needed).
+//
+// Fe features exercised: nested array storage [[u256; 4]; 4],
+// 2D indexing board[row][col], coordinate arithmetic, while loops.
+// =============================================================================
+
+use std::evm::{Address, Ctx, Call}
+use ingot::{
+    ERR_INVALID_INDEX,
+    ERR_NOT_MOVABLE,
+    ERR_MISSING_LOCK,
+    ERR_ALREADY_INITIALIZED,
+    LockValidatorMsg,
+}
+
+fn winning_value_2d(row: usize, col: usize) -> u256 {
+    let index = row * 4 + col
+    if index == 15 { return 0 }
+    return (index + 1) as u256
+}
+
+pub msg Game2DMsg {
+    #[selector = 0x01]
+    GetBoard { row: u256, col: u256 } -> u256,
+    #[selector = 0x02]
+    IsSolved -> u256,
+    #[selector = 0x03]
+    MoveField { row: u256, col: u256 } -> u256,
+    #[selector = 0x04]
+    SetCell2D { row: u256, col: u256, value: u256 } -> u256,
+}
+
+struct Game2DStore {
+    lock_validator_inner: u256,
+    initialized: u256,
+    board: [[u256; 4]; 4],
+}
+
+pub contract Game2D uses (ctx: Ctx, call: mut Call) {
+    mut store: Game2DStore
+
+    init(lock_validator_inner: u256) uses (mut store) {
+        store.lock_validator_inner = lock_validator_inner
+        store.initialized = 0
+    }
+
+    recv Game2DMsg {
+        GetBoard { row, col } -> u256 uses (store) {
+            store.board[row as usize][col as usize]
+        }
+
+        IsSolved -> u256 uses (store) {
+            let mut row: usize = 0
+            while row < 4 {
+                let mut col: usize = 0
+                while col < 4 {
+                    if store.board[row][col] != winning_value_2d(row, col) {
+                        return 0
+                    }
+                    col += 1
+                }
+                row += 1
+            }
+            return 1
+        }
+
+        SetCell2D { row, col, value } -> u256 uses (mut store) {
+            if store.initialized != 0 {
+                return ERR_ALREADY_INITIALIZED
+            }
+            if row > 3 || col > 3 {
+                return ERR_INVALID_INDEX
+            }
+            store.board[row as usize][col as usize] = value
+            // Mark initialized when last cell (3,3) is set
+            if row == 3 && col == 3 {
+                store.initialized = 1
+            }
+            return 0
+        }
+
+        MoveField { row, col } -> u256 uses (mut store, ctx, mut call) {
+            // Validate lock
+            let lock_addr = Address { inner: store.lock_validator_inner }
+            let lock_result: u256 = call.call(
+                addr: lock_addr,
+                gas: 100000,
+                value: 0,
+                message: LockValidatorMsg::ValidateOwnsLock { owner_inner: ctx.caller().inner }
+            )
+            if lock_result != 0 {
+                return ERR_MISSING_LOCK
+            }
+
+            if row > 3 || col > 3 {
+                return ERR_INVALID_INDEX
+            }
+
+            let r_idx = row as usize
+            let c_idx = col as usize
+
+            // Find empty cell
+            let mut empty_row: usize = 4
+            let mut empty_col: usize = 4
+            let mut r: usize = 0
+            while r < 4 {
+                let mut c: usize = 0
+                while c < 4 {
+                    if store.board[r][c] == 0 {
+                        empty_row = r
+                        empty_col = c
+                    }
+                    c += 1
+                }
+                r += 1
+            }
+
+            // Check adjacency: must be exactly 1 step away (Manhattan distance == 1)
+            let row_diff = if r_idx > empty_row { r_idx - empty_row } else { empty_row - r_idx }
+            let col_diff = if c_idx > empty_col { c_idx - empty_col } else { empty_col - c_idx }
+            let is_adjacent = (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
+            if !is_adjacent {
+                return ERR_NOT_MOVABLE
+            }
+
+            // Swap
+            let val = store.board[r_idx][c_idx]
+            store.board[r_idx][c_idx] = 0
+            store.board[empty_row][empty_col] = val
+            return 0
+        }
+    }
+}

@@ -1,0 +1,191 @@
+// =============================================================================
+// GameEnum — 15-puzzle using enums, match, struct with impl, fixed array
+//
+// Board stored as [u256; 16] fixed array. Move logic uses an enum Direction
+// and match expressions. Point struct with impl methods converts between
+// flat index and (row, col) coordinates.
+//
+// Fe features exercised: enum, match expression, struct with impl,
+// method calls, [u256; 16] fixed array in storage.
+// =============================================================================
+
+use std::evm::{Address, Ctx, Call}
+use ingot::{
+    ERR_INVALID_INDEX,
+    ERR_NOT_MOVABLE,
+    ERR_MISSING_LOCK,
+    ERR_ALREADY_INITIALIZED,
+    LockValidatorMsg,
+}
+
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+struct Point {
+    row: usize,
+    col: usize,
+}
+
+impl Point {
+    fn from_index(index: usize) -> Point {
+        Point { row: index / 4, col: index % 4 }
+    }
+
+    fn to_index(self) -> usize {
+        self.row * 4 + self.col
+    }
+
+    fn can_move(self, dir: Direction) -> bool {
+        match dir {
+            Direction::Up => self.row > 0,
+            Direction::Down => self.row < 3,
+            Direction::Left => self.col > 0,
+            Direction::Right => self.col < 3,
+        }
+    }
+
+    fn neighbor(self, dir: Direction) -> Point {
+        match dir {
+            Direction::Up => Point { row: self.row - 1, col: self.col },
+            Direction::Down => Point { row: self.row + 1, col: self.col },
+            Direction::Left => Point { row: self.row, col: self.col - 1 },
+            Direction::Right => Point { row: self.row, col: self.col + 1 },
+        }
+    }
+}
+
+fn winning_value_enum(index: usize) -> u256 {
+    if index == 15 { return 0 }
+    return (index + 1) as u256
+}
+
+pub msg GameEnumMsg {
+    #[selector = 0x01]
+    GetBoard { index: u256 } -> u256,
+    #[selector = 0x02]
+    IsSolved -> u256,
+    #[selector = 0x03]
+    MoveField { index: u256 } -> u256,
+    #[selector = 0x04]
+    SetCell { index: u256, value: u256 } -> u256,
+}
+
+struct GameEnumStore {
+    lock_validator_inner: u256,
+    initialized: u256,
+    board: [u256; 16],
+}
+
+pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
+    mut store: GameEnumStore
+
+    init(lock_validator_inner: u256) uses (mut store) {
+        store.lock_validator_inner = lock_validator_inner
+        store.initialized = 0
+    }
+
+    recv GameEnumMsg {
+        GetBoard { index } -> u256 uses (store) {
+            store.board[index as usize]
+        }
+
+        IsSolved -> u256 uses (store) {
+            let mut i: usize = 0
+            while i < 16 {
+                if store.board[i] != winning_value_enum(i) {
+                    return 0
+                }
+                i += 1
+            }
+            return 1
+        }
+
+        SetCell { index, value } -> u256 uses (mut store) {
+            if store.initialized != 0 {
+                return ERR_ALREADY_INITIALIZED
+            }
+            if index > 15 {
+                return ERR_INVALID_INDEX
+            }
+            store.board[index as usize] = value
+            if index == 15 {
+                store.initialized = 1
+            }
+            return 0
+        }
+
+        MoveField { index } -> u256 uses (mut store, ctx, mut call) {
+            // Validate lock
+            let lock_addr = Address { inner: store.lock_validator_inner }
+            let lock_result: u256 = call.call(
+                addr: lock_addr,
+                gas: 100000,
+                value: 0,
+                message: LockValidatorMsg::ValidateOwnsLock { owner_inner: ctx.caller().inner }
+            )
+            if lock_result != 0 {
+                return ERR_MISSING_LOCK
+            }
+
+            if index > 15 {
+                return ERR_INVALID_INDEX
+            }
+
+            let idx = index as usize
+
+            // Find empty field
+            let mut empty_idx: usize = 16
+            let mut j: usize = 0
+            while j < 16 {
+                if store.board[j] == 0 {
+                    empty_idx = j
+                }
+                j += 1
+            }
+
+            // Check adjacency using enum Direction + Point methods
+            let empty_pt = Point::from_index(empty_idx)
+            let mut can_swap: bool = false
+
+            // Check all 4 directions from the empty cell
+            if empty_pt.can_move(Direction::Up) {
+                let nb = empty_pt.neighbor(Direction::Up)
+                if nb.to_index() == idx {
+                    can_swap = true
+                }
+            }
+            if empty_pt.can_move(Direction::Down) {
+                let nb = empty_pt.neighbor(Direction::Down)
+                if nb.to_index() == idx {
+                    can_swap = true
+                }
+            }
+            if empty_pt.can_move(Direction::Left) {
+                let nb = empty_pt.neighbor(Direction::Left)
+                if nb.to_index() == idx {
+                    can_swap = true
+                }
+            }
+            if empty_pt.can_move(Direction::Right) {
+                let nb = empty_pt.neighbor(Direction::Right)
+                if nb.to_index() == idx {
+                    can_swap = true
+                }
+            }
+
+            if !can_swap {
+                return ERR_NOT_MOVABLE
+            }
+
+            // Swap
+            let val = store.board[idx]
+            store.board[idx] = 0
+            store.board[empty_idx] = val
+            return 0
+        }
+    }
+}
