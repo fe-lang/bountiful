@@ -28,7 +28,7 @@ pub msg GameMsg {
 }
 
 struct GameStore {
-    lock_validator_inner: u256,
+    lock_validator: Address,
     initialized: u256,
     board: StorageMap<u256, u256>,
     moves: StorageMap<u256, u256>,
@@ -37,8 +37,8 @@ struct GameStore {
 pub contract Game uses (ctx: Ctx, call: mut Call) {
     mut store: GameStore
 
-    init(lock_validator_inner: u256) uses (mut store) {
-        store.lock_validator_inner = lock_validator_inner
+    init(lock_validator: Address) uses (mut store) {
+        store.lock_validator = lock_validator
         store.initialized = 0
         // Initialize move adjacency table
         store.moves.set(key: 0, value: encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE))
@@ -92,12 +92,11 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
             // Validate lock via cross-contract call
-            let lock_addr = Address { inner: store.lock_validator_inner }
             let lock_result: u256 = call.call(
-                addr: lock_addr,
+                addr: store.lock_validator,
                 gas: 100000,
                 value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner_inner: ctx.caller().inner }
+                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
                 return ERR_MISSING_LOCK
@@ -138,11 +137,12 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 0)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 0)
     assert(registry.inner != 0)
 
     // Deploy game with solved board
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 1)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 1)
     assert(game.inner != 0)
 
     // Set board: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]
@@ -168,8 +168,9 @@ fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_unsolved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 10)
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 11)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 10)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 11)
 
     // Board: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,0,15] — swapped last two
     let mut i: u256 = 0
@@ -186,8 +187,9 @@ fn test_game_unsolved() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 20)
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 21)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 20)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 21)
 
     // Board: [1..14, 0, 15] — empty at 14
     let mut i: u256 = 0
@@ -213,8 +215,9 @@ fn test_game_move_and_solve() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_invalid_move() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 30)
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 31)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 30)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 31)
 
     // Board: [1..14, 0, 15]
     let mut i: u256 = 0
@@ -235,8 +238,9 @@ fn test_game_invalid_move() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_move_without_lock() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 40)
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 41)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 40)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 41)
 
     // Set a board cell
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 0, value: 1 })

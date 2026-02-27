@@ -57,7 +57,7 @@ pub msg GameBitboardMsg {
 }
 
 struct GameBitboardStore {
-    lock_validator_inner: u256,
+    lock_validator: Address,
     initialized: u256,
     board: u256,
     moves: StorageMap<u256, u256>,
@@ -66,8 +66,8 @@ struct GameBitboardStore {
 pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
     mut store: GameBitboardStore
 
-    init(lock_validator_inner: u256) uses (mut store) {
-        store.lock_validator_inner = lock_validator_inner
+    init(lock_validator: Address) uses (mut store) {
+        store.lock_validator = lock_validator
         store.initialized = 0
         store.board = 0
         // Initialize move adjacency table (same as Game)
@@ -114,12 +114,11 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
             // Validate lock
-            let lock_addr = Address { inner: store.lock_validator_inner }
             let lock_result: u256 = call.call(
-                addr: lock_addr,
+                addr: store.lock_validator,
                 gas: 100000,
                 value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner_inner: ctx.caller().inner }
+                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
                 return ERR_MISSING_LOCK
@@ -162,8 +161,9 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_bitboard_solved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 100)
-    let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 101)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 100)
+    let game = evm.create2<GameBitboard>(value: 0, args: (registry,), salt: 101)
 
     // Set solved board: [1,2,3,...,15,0]
     let mut i: u256 = 0
@@ -185,8 +185,9 @@ fn test_bitboard_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 110)
-    let game = evm.create2<GameBitboard>(value: 0, args: (registry.inner,), salt: 111)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 110)
+    let game = evm.create2<GameBitboard>(value: 0, args: (registry,), salt: 111)
 
     // Board: [1..14, 0, 15] — empty at 14
     let mut i: u256 = 0

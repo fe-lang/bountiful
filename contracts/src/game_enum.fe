@@ -76,7 +76,7 @@ pub msg GameEnumMsg {
 }
 
 struct GameEnumStore {
-    lock_validator_inner: u256,
+    lock_validator: Address,
     initialized: u256,
     board: [u256; 16],
 }
@@ -84,8 +84,8 @@ struct GameEnumStore {
 pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
     mut store: GameEnumStore
 
-    init(lock_validator_inner: u256) uses (mut store) {
-        store.lock_validator_inner = lock_validator_inner
+    init(lock_validator: Address) uses (mut store) {
+        store.lock_validator = lock_validator
         store.initialized = 0
     }
 
@@ -121,12 +121,11 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
             // Validate lock
-            let lock_addr = Address { inner: store.lock_validator_inner }
             let lock_result: u256 = call.call(
-                addr: lock_addr,
+                addr: store.lock_validator,
                 gas: 100000,
                 value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner_inner: ctx.caller().inner }
+                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
                 return ERR_MISSING_LOCK
@@ -197,8 +196,9 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_enum_solved() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 300)
-    let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 301)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 300)
+    let game = evm.create2<GameEnum>(value: 0, args: (registry,), salt: 301)
 
     // Set solved board
     let mut i: u256 = 0
@@ -217,8 +217,9 @@ fn test_enum_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_enum_move_and_solve() uses (evm: mut Evm) {
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (0, 0), salt: 310)
-    let game = evm.create2<GameEnum>(value: 0, args: (registry.inner,), salt: 311)
+    let zero_addr = Address::zero()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 310)
+    let game = evm.create2<GameEnum>(value: 0, args: (registry,), salt: 311)
 
     // Board: [1..14, 0, 15]
     let mut i: u256 = 0

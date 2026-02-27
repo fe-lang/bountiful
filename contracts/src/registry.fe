@@ -21,15 +21,15 @@ pub msg RegistryMsg {
     #[selector = 0x02]
     IsLocked -> u256,
     #[selector = 0x03]
-    RegisterChallenge { challenge_inner: u256 } -> u256,
+    RegisterChallenge { challenge: Address } -> u256,
     #[selector = 0x04]
-    RemoveChallenge { challenge_inner: u256 } -> u256,
+    RemoveChallenge { challenge: Address } -> u256,
     #[selector = 0x05]
-    IsOpenChallenge { challenge_inner: u256 } -> u256,
+    IsOpenChallenge { challenge: Address } -> u256,
     #[selector = 0x06]
-    Claim { challenge_inner: u256 } -> u256,
+    Claim { challenge: Address } -> u256,
     #[selector = 0x07]
-    ValidateOwnsLock { owner_inner: u256 } -> u256,
+    ValidateOwnsLock { owner: Address } -> u256,
     #[selector = 0x08]
     Withdraw -> u256,
     #[selector = 0x09]
@@ -37,20 +37,20 @@ pub msg RegistryMsg {
 }
 
 struct RegistryStore {
-    lock_claimer_inner: u256,
+    lock_claimer: Address,
     lock_valid_until_block: u256,
-    admin_inner: u256,
+    admin: Address,
     lock_deposit: u256,
-    open_challenges: StorageMap<u256, u256>,
+    open_challenges: StorageMap<Address, u256>,
 }
 
 pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
     mut store: RegistryStore
 
-    init(admin_inner: u256, lock_deposit: u256) uses (mut store) {
-        store.admin_inner = admin_inner
+    init(admin: Address, lock_deposit: u256) uses (mut store) {
+        store.admin = admin
         store.lock_deposit = lock_deposit
-        store.lock_claimer_inner = 0
+        store.lock_claimer = Address::zero()
         store.lock_valid_until_block = 0
     }
 
@@ -62,7 +62,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if ctx.value() < store.lock_deposit {
                 return ERR_INVALID_DEPOSIT
             }
-            store.lock_claimer_inner = ctx.caller().inner
+            store.lock_claimer = ctx.caller()
             store.lock_valid_until_block = ctx.block_number() + LOCK_PERIOD
             return 0
         }
@@ -71,43 +71,42 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if store.lock_valid_until_block > ctx.block_number() { 1 } else { 0 }
         }
 
-        RegisterChallenge { challenge_inner } -> u256 uses (mut store, ctx) {
-            if ctx.caller().inner != store.admin_inner {
+        RegisterChallenge { challenge } -> u256 uses (mut store, ctx) {
+            if ctx.caller() != store.admin {
                 return ERR_ONLY_ADMIN
             }
-            store.open_challenges.set(key: challenge_inner, value: 1)
+            store.open_challenges.set(key: challenge, value: 1)
             return 0
         }
 
-        RemoveChallenge { challenge_inner } -> u256 uses (mut store, ctx) {
-            if ctx.caller().inner != store.admin_inner {
+        RemoveChallenge { challenge } -> u256 uses (mut store, ctx) {
+            if ctx.caller() != store.admin {
                 return ERR_ONLY_ADMIN
             }
             if store.lock_valid_until_block > ctx.block_number() {
                 return ERR_ALREADY_LOCKED
             }
-            store.open_challenges.set(key: challenge_inner, value: 0)
+            store.open_challenges.set(key: challenge, value: 0)
             return 0
         }
 
-        IsOpenChallenge { challenge_inner } -> u256 uses (store) {
-            store.open_challenges.get(key: challenge_inner)
+        IsOpenChallenge { challenge } -> u256 uses (store) {
+            store.open_challenges.get(key: challenge)
         }
 
-        Claim { challenge_inner } -> u256 uses (mut store, ctx, mut call) {
-            if store.lock_claimer_inner != ctx.caller().inner {
+        Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
+            if store.lock_claimer != ctx.caller() {
                 return ERR_MISSING_LOCK
             }
             if store.lock_valid_until_block <= ctx.block_number() {
                 return ERR_MISSING_LOCK
             }
-            if store.open_challenges.get(key: challenge_inner) != 1 {
+            if store.open_challenges.get(key: challenge) != 1 {
                 return ERR_INVALID_CLAIM
             }
             // Cross-contract call to check if puzzle is solved
-            let challenge_addr = Address { inner: challenge_inner }
             let solved: u256 = call.call(
-                addr: challenge_addr,
+                addr: challenge,
                 gas: 100000,
                 value: 0,
                 message: SolvableMsg::IsSolved {}
@@ -117,12 +116,12 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             }
             // Send entire contract balance to claimer
             ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
-            store.open_challenges.set(key: challenge_inner, value: 0)
+            store.open_challenges.set(key: challenge, value: 0)
             return 0
         }
 
-        ValidateOwnsLock { owner_inner } -> u256 uses (store, ctx) {
-            if store.lock_claimer_inner != owner_inner {
+        ValidateOwnsLock { owner } -> u256 uses (store, ctx) {
+            if store.lock_claimer != owner {
                 return ERR_MISSING_LOCK
             }
             if store.lock_valid_until_block <= ctx.block_number() {
@@ -132,7 +131,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         Withdraw -> u256 uses (store, ctx) {
-            if ctx.caller().inner != store.admin_inner {
+            if ctx.caller() != store.admin {
                 return ERR_ONLY_ADMIN
             }
             if store.lock_valid_until_block > ctx.block_number() {
@@ -154,7 +153,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_registry_lock() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 50)
 
     // Initially not locked
@@ -177,84 +176,84 @@ fn test_registry_lock() uses (evm: mut Evm) {
 #[test]
 fn test_registry_non_admin_register() uses (evm: mut Evm) {
     // Deploy with a different admin so our caller is NOT admin
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (999, 0), salt: 55)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (Address { inner: 999 }, 0), salt: 55)
 
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == ERR_ONLY_ADMIN)
 }
 
 #[test]
 fn test_registry_admin_register_and_check() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 56)
 
     // Not open initially
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 12345 } }
     )
     assert(is_open == 0)
 
     // Register as admin
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == 0)
 
     // Now open
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 12345 } }
     )
     assert(is_open == 1)
 }
 
 #[test]
 fn test_registry_remove_challenge_unlocked() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 57)
 
     // Register
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == 0)
 
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 12345 } }
     )
     assert(is_open == 1)
 
     // Remove while unlocked — should succeed
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RemoveChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RemoveChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == 0)
 
     // No longer open
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 12345 } }
     )
     assert(is_open == 0)
 }
 
 #[test]
 fn test_registry_remove_challenge_while_locked() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 58)
 
     // Register challenge
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == 0)
 
@@ -264,25 +263,25 @@ fn test_registry_remove_challenge_while_locked() uses (evm: mut Evm) {
     // Try to remove while locked — should fail
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RemoveChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::RemoveChallenge { challenge: Address { inner: 12345 } }
     )
     assert(res == ERR_ALREADY_LOCKED)
 
     // Challenge still open
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: 12345 }
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 12345 } }
     )
     assert(is_open == 1)
 }
 
 #[test]
 fn test_registry_claim_without_lock() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 59)
 
     // Deploy a solved game
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 75)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 75)
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -293,7 +292,7 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: game.inner }
+        message: RegistryMsg::RegisterChallenge { challenge: game }
     )
     assert(res == 0)
 
@@ -304,18 +303,18 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
     // Try to claim without locking first — should fail
     let claim_res: u256 = evm.call(
         addr: registry, gas: 500000, value: 0,
-        message: RegistryMsg::Claim { challenge_inner: game.inner }
+        message: RegistryMsg::Claim { challenge: game }
     )
     assert(claim_res == ERR_MISSING_LOCK)
 }
 
 #[test]
 fn test_registry_claim_unregistered() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 60)
 
     // Deploy a solved game but do NOT register it
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 61)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 61)
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -329,18 +328,18 @@ fn test_registry_claim_unregistered() uses (evm: mut Evm) {
     // Try to claim unregistered challenge — should fail
     let res: u256 = evm.call(
         addr: registry, gas: 500000, value: 0,
-        message: RegistryMsg::Claim { challenge_inner: game.inner }
+        message: RegistryMsg::Claim { challenge: game }
     )
     assert(res == ERR_INVALID_CLAIM)
 }
 
 #[test]
 fn test_registry_claim_unsolved() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 62)
 
     // Deploy an UNSOLVED game: [1..14, 0, 15]
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 63)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 63)
     let mut i: u256 = 0
     while i < 14 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -352,7 +351,7 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: game.inner }
+        message: RegistryMsg::RegisterChallenge { challenge: game }
     )
     assert(res == 0)
 
@@ -366,18 +365,18 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
     // Try to claim unsolved challenge — should fail
     let claim_res: u256 = evm.call(
         addr: registry, gas: 500000, value: 0,
-        message: RegistryMsg::Claim { challenge_inner: game.inner }
+        message: RegistryMsg::Claim { challenge: game }
     )
     assert(claim_res == ERR_INVALID_CLAIM)
 }
 
 #[test]
 fn test_full_bounty_flow() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 64)
 
     // Deploy solved game
-    let game = evm.create2<Game>(value: 0, args: (registry.inner,), salt: 65)
+    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 65)
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -388,14 +387,14 @@ fn test_full_bounty_flow() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let reg_res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge_inner: game.inner }
+        message: RegistryMsg::RegisterChallenge { challenge: game }
     )
     assert(reg_res == 0)
 
     // Verify open
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: game.inner }
+        message: RegistryMsg::IsOpenChallenge { challenge: game }
     )
     assert(is_open == 1)
 
@@ -406,21 +405,21 @@ fn test_full_bounty_flow() uses (evm: mut Evm) {
     // Claim (game is solved)
     let claim_res: u256 = evm.call(
         addr: registry, gas: 500000, value: 0,
-        message: RegistryMsg::Claim { challenge_inner: game.inner }
+        message: RegistryMsg::Claim { challenge: game }
     )
     assert(claim_res == 0)
 
     // Challenge closed
     let is_open: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge_inner: game.inner }
+        message: RegistryMsg::IsOpenChallenge { challenge: game }
     )
     assert(is_open == 0)
 }
 
 #[test]
 fn test_registry_lock_requires_deposit() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     // Deploy with lock_deposit = 100
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 100), salt: 70)
 
@@ -431,7 +430,7 @@ fn test_registry_lock_requires_deposit() uses (evm: mut Evm) {
 
 #[test]
 fn test_registry_withdraw() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 71)
 
     // Admin withdraw when unlocked — should succeed
@@ -441,7 +440,7 @@ fn test_registry_withdraw() uses (evm: mut Evm) {
 
 #[test]
 fn test_registry_withdraw_while_locked() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 72)
 
     // Lock
@@ -455,7 +454,7 @@ fn test_registry_withdraw_while_locked() uses (evm: mut Evm) {
 #[test]
 fn test_registry_non_admin_withdraw() uses (evm: mut Evm) {
     // Deploy with a different admin so our caller is NOT admin
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (999, 0), salt: 73)
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (Address { inner: 999 }, 0), salt: 73)
 
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Withdraw {})
     assert(res == ERR_ONLY_ADMIN)
@@ -463,7 +462,7 @@ fn test_registry_non_admin_withdraw() uses (evm: mut Evm) {
 
 #[test]
 fn test_registry_get_balance() uses (evm: mut Evm) {
-    let admin = evm.address().inner
+    let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 74)
 
     // Balance should be 0 (no ETH in test environment)
