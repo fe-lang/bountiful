@@ -5,7 +5,7 @@
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use std::evm::ops
-use ingot::{
+use shared::{
     ERR_ALREADY_LOCKED,
     ERR_MISSING_LOCK,
     ERR_ONLY_ADMIN,
@@ -14,7 +14,7 @@ use ingot::{
     LOCK_PERIOD,
     SolvableMsg,
 }
-use ingot::game::{Game, GameMsg}
+use ingot::dummy_game::DummyGame
 
 pub msg RegistryMsg {
     #[selector = sol("lock()")]
@@ -281,14 +281,8 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
     let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 59)
 
-    // Deploy a solved game
-    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 75)
-    let mut i: u256 = 0
-    while i < 15 {
-        evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
-        i += 1
-    }
-    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
+    // Deploy a solved DummyGame
+    let game = evm.create2<DummyGame>(value: 0, args: (1,), salt: 75)
 
     // Register challenge (as admin)
     let res: u256 = evm.call(
@@ -296,10 +290,6 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
         message: RegistryMsg::RegisterChallenge { challenge: game }
     )
     assert(res == 0)
-
-    // Verify game is solved
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
-    assert(solved == 1)
 
     // Try to claim without locking first — should fail
     let claim_res: u256 = evm.call(
@@ -314,14 +304,8 @@ fn test_registry_claim_unregistered() uses (evm: mut Evm) {
     let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 60)
 
-    // Deploy a solved game but do NOT register it
-    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 61)
-    let mut i: u256 = 0
-    while i < 15 {
-        evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
-        i += 1
-    }
-    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
+    // Deploy a solved DummyGame but do NOT register it
+    let game = evm.create2<DummyGame>(value: 0, args: (1,), salt: 61)
 
     // Lock
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
@@ -339,15 +323,8 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
     let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 62)
 
-    // Deploy an UNSOLVED game: [1..14, 0, 15]
-    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 63)
-    let mut i: u256 = 0
-    while i < 14 {
-        evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
-        i += 1
-    }
-    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 14, value: 0 })
-    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 15 })
+    // Deploy an UNSOLVED DummyGame
+    let game = evm.create2<DummyGame>(value: 0, args: (0,), salt: 63)
 
     // Register challenge (as admin)
     let res: u256 = evm.call(
@@ -355,10 +332,6 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
         message: RegistryMsg::RegisterChallenge { challenge: game }
     )
     assert(res == 0)
-
-    // Verify NOT solved
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
-    assert(solved == 0)
 
     // Lock
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
@@ -376,14 +349,8 @@ fn test_full_bounty_flow() uses (evm: mut Evm) {
     let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 64)
 
-    // Deploy solved game
-    let game = evm.create2<Game>(value: 0, args: (registry,), salt: 65)
-    let mut i: u256 = 0
-    while i < 15 {
-        evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
-        i += 1
-    }
-    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
+    // Deploy solved DummyGame
+    let game = evm.create2<DummyGame>(value: 0, args: (1,), salt: 65)
 
     // Register challenge (as admin)
     let reg_res: u256 = evm.call(

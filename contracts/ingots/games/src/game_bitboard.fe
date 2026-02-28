@@ -11,15 +11,15 @@
 
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
-use ingot::{
+use shared::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
     ERR_MISSING_LOCK,
     ERR_ALREADY_INITIALIZED,
     LockValidatorMsg,
 }
-use ingot::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
-use ingot::registry::{BountyRegistry, RegistryMsg}
+use shared::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
+use shared::dummy_lock_validator::DummyLockValidator
 
 fn get_cell(board: u256, index: u256) -> u256 {
     (board >> (index * 4)) & 0xF
@@ -32,15 +32,12 @@ fn set_cell(board: u256, index: u256, value: u256) -> u256 {
 }
 
 fn winning_board() -> u256 {
-    // [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]
-    // Cell 0 = 1, cell 1 = 2, ..., cell 14 = 15, cell 15 = 0
     let mut board: u256 = 0
     let mut i: u256 = 0
     while i < 15 {
         board = set_cell(board, i, i + 1)
         i += 1
     }
-    // cell 15 = 0 (already 0)
     return board
 }
 
@@ -69,7 +66,6 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
         store.lock_validator = lock_validator
         store.initialized = 0
         store.board = 0
-        // Initialize move adjacency table (same as Game)
         store.moves.set(key: 0, value: encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE))
         store.moves.set(key: 1, value: encode_moves(0, 2, 5, INVALID_MOVE))
         store.moves.set(key: 2, value: encode_moves(1, 3, 6, INVALID_MOVE))
@@ -112,7 +108,6 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
         }
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
-            // Validate lock
             let lock_result: u256 = call.call(
                 addr: store.lock_validator,
                 gas: 100000,
@@ -127,7 +122,6 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
                 return ERR_INVALID_INDEX
             }
 
-            // Find empty field
             let mut empty_idx: u256 = 16
             let mut j: u256 = 0
             while j < 16 {
@@ -137,13 +131,11 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
                 j += 1
             }
 
-            // Check adjacency
             let encoded = store.moves.get(key: empty_idx)
             if !is_movable_to(encoded, index) {
                 return ERR_NOT_MOVABLE
             }
 
-            // Swap via bit operations
             let val = get_cell(store.board, index)
             let mut b = store.board
             b = set_cell(b, index, 0)
@@ -160,11 +152,9 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_bitboard_solved() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 100)
-    let game = evm.create2<GameBitboard>(value: 0, args: (registry,), salt: 101)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 100)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 101)
 
-    // Set solved board: [1,2,3,...,15,0]
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
@@ -172,7 +162,6 @@ fn test_bitboard_solved() uses (evm: mut Evm) {
     }
     evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 0 })
 
-    // Check a few cells
     let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::GetBoard { index: 0 })
     assert(v0 == 1)
     let v14: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::GetBoard { index: 14 })
@@ -184,11 +173,9 @@ fn test_bitboard_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 110)
-    let game = evm.create2<GameBitboard>(value: 0, args: (registry,), salt: 111)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 110)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 111)
 
-    // Board: [1..14, 0, 15] — empty at 14
     let mut i: u256 = 0
     while i < 14 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
@@ -197,11 +184,6 @@ fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
     evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 14, value: 0 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 15 })
 
-    // Lock
-    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
-    assert(lock_res == 0)
-
-    // Move field at index 15 next to empty at 14
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 15 })
     assert(move_res == 0)
 

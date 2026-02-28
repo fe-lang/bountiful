@@ -1,0 +1,15 @@
+use shared::SolvableMsg
+
+pub contract DummyGame {
+    mut solved: u256,
+
+    init(is_solved: u256) uses (mut solved) {
+        solved = is_solved
+    }
+
+    recv SolvableMsg {
+        IsSolved -> u256 uses (solved) {
+            solved
+        }
+    }
+}

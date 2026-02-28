@@ -1,0 +1,6 @@
+// Games ingot — 15-puzzle game contract variants
+
+use ingot::game
+use ingot::game_2d
+use ingot::game_bitboard
+use ingot::game_enum

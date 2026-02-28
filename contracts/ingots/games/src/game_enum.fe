@@ -11,14 +11,14 @@
 
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
-use ingot::{
+use shared::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
     ERR_MISSING_LOCK,
     ERR_ALREADY_INITIALIZED,
     LockValidatorMsg,
 }
-use ingot::registry::{BountyRegistry, RegistryMsg}
+use shared::dummy_lock_validator::DummyLockValidator
 
 enum Direction {
     Up,
@@ -121,7 +121,6 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
         }
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
-            // Validate lock
             let lock_result: u256 = call.call(
                 addr: store.lock_validator,
                 gas: 100000,
@@ -138,7 +137,6 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
             let idx = index as usize
 
-            // Find empty field
             let mut empty_idx: usize = 16
             let mut j: usize = 0
             while j < 16 {
@@ -148,11 +146,9 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
                 j += 1
             }
 
-            // Check adjacency using enum Direction + Point methods
             let empty_pt = Point::from_index(empty_idx)
             let mut can_swap: bool = false
 
-            // Check all 4 directions from the empty cell
             if empty_pt.can_move(Direction::Up) {
                 let nb = empty_pt.neighbor(Direction::Up)
                 if nb.to_index() == idx {
@@ -182,7 +178,6 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
                 return ERR_NOT_MOVABLE
             }
 
-            // Swap
             let val = store.board[idx]
             store.board[idx] = 0
             store.board[empty_idx] = val
@@ -197,11 +192,9 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_enum_solved() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 300)
-    let game = evm.create2<GameEnum>(value: 0, args: (registry,), salt: 301)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 300)
+    let game = evm.create2<GameEnum>(value: 0, args: (validator,), salt: 301)
 
-    // Set solved board
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: i, value: i + 1 })
@@ -218,11 +211,9 @@ fn test_enum_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_enum_move_and_solve() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 310)
-    let game = evm.create2<GameEnum>(value: 0, args: (registry,), salt: 311)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 310)
+    let game = evm.create2<GameEnum>(value: 0, args: (validator,), salt: 311)
 
-    // Board: [1..14, 0, 15]
     let mut i: u256 = 0
     while i < 14 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: i, value: i + 1 })
@@ -231,11 +222,6 @@ fn test_enum_move_and_solve() uses (evm: mut Evm) {
     evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: 14, value: 0 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::SetCell { index: 15, value: 15 })
 
-    // Lock
-    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
-    assert(lock_res == 0)
-
-    // Move field at index 15 next to empty at 14
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 15 })
     assert(move_res == 0)
 

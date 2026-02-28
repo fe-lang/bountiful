@@ -1,0 +1,15 @@
+use ingot::LockValidatorMsg
+
+pub contract DummyLockValidator {
+    mut lock_result: u256,
+
+    init(result: u256) uses (mut lock_result) {
+        lock_result = result
+    }
+
+    recv LockValidatorMsg {
+        ValidateOwnsLock { owner } -> u256 uses (lock_result) {
+            lock_result
+        }
+    }
+}

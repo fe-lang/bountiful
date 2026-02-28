@@ -10,14 +10,14 @@
 
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
-use ingot::{
+use shared::{
     ERR_INVALID_INDEX,
     ERR_NOT_MOVABLE,
     ERR_MISSING_LOCK,
     ERR_ALREADY_INITIALIZED,
     LockValidatorMsg,
 }
-use ingot::registry::{BountyRegistry, RegistryMsg}
+use shared::dummy_lock_validator::DummyLockValidator
 
 fn winning_value_2d(row: usize, col: usize) -> u256 {
     let index = row * 4 + col
@@ -78,7 +78,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
                 return ERR_INVALID_INDEX
             }
             store.board[row as usize][col as usize] = value
-            // Mark initialized when last cell (3,3) is set
             if row == 3 && col == 3 {
                 store.initialized = 1
             }
@@ -86,7 +85,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
         }
 
         MoveField { row, col } -> u256 uses (mut store, ctx, mut call) {
-            // Validate lock
             let lock_result: u256 = call.call(
                 addr: store.lock_validator,
                 gas: 100000,
@@ -104,7 +102,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
             let r_idx = row as usize
             let c_idx = col as usize
 
-            // Find empty cell
             let mut empty_row: usize = 4
             let mut empty_col: usize = 4
             let mut r: usize = 0
@@ -120,7 +117,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
                 r += 1
             }
 
-            // Check adjacency: must be exactly 1 step away (Manhattan distance == 1)
             let row_diff = if r_idx > empty_row { r_idx - empty_row } else { empty_row - r_idx }
             let col_diff = if c_idx > empty_col { c_idx - empty_col } else { empty_col - c_idx }
             let is_adjacent = (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
@@ -128,7 +124,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
                 return ERR_NOT_MOVABLE
             }
 
-            // Swap
             let val = store.board[r_idx][c_idx]
             store.board[r_idx][c_idx] = 0
             store.board[empty_row][empty_col] = val
@@ -143,9 +138,8 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_2d_solved() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 200)
-    let game = evm.create2<Game2D>(value: 0, args: (registry,), salt: 201)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 200)
+    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 201)
 
     // Set solved board row by row: [1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,0]
     let mut row: u256 = 0
@@ -160,7 +154,6 @@ fn test_2d_solved() uses (evm: mut Evm) {
         row += 1
     }
 
-    // Check a few cells
     let v00: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 0, col: 0 })
     assert(v00 == 1)
     let v12: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 1, col: 2 })
@@ -172,9 +165,8 @@ fn test_2d_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_2d_move_and_solve() uses (evm: mut Evm) {
-    let zero_addr = Address::zero()
-    let registry = evm.create2<BountyRegistry>(value: 0, args: (zero_addr, 0), salt: 210)
-    let game = evm.create2<Game2D>(value: 0, args: (registry,), salt: 211)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 210)
+    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 211)
 
     // Board: solved except last two swapped — (3,2)=0, (3,3)=15
     let mut row: u256 = 0
@@ -189,11 +181,6 @@ fn test_2d_move_and_solve() uses (evm: mut Evm) {
         row += 1
     }
 
-    // Lock
-    let lock_res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
-    assert(lock_res == 0)
-
-    // Move (3,3) — adjacent to empty at (3,2)
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
     assert(move_res == 0)
 
