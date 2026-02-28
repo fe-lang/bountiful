@@ -1,0 +1,5 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "forge-out"
+fs_permissions = [{ access = "read", path = "./" }]
