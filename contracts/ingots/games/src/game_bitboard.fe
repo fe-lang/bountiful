@@ -12,10 +12,7 @@
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use shared::{
-    ERR_INVALID_INDEX,
-    ERR_NOT_MOVABLE,
-    ERR_MISSING_LOCK,
-    ERR_ALREADY_INITIALIZED,
+    Error,
     LockValidatorMsg,
 }
 use shared::game_util::{INVALID_MOVE, encode_moves, is_movable_to}
@@ -95,10 +92,10 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
         SetCell { index, value } -> u256 uses (mut store) {
             if store.initialized != 0 {
-                return ERR_ALREADY_INITIALIZED
+                return Error::AlreadyInitialized.to_int()
             }
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
             store.board = set_cell(store.board, index, value)
             if index == 15 {
@@ -115,11 +112,11 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
                 message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
 
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
 
             let mut empty_idx: u256 = 16
@@ -133,7 +130,7 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
             let encoded = store.moves.get(key: empty_idx)
             if !is_movable_to(encoded, index) {
-                return ERR_NOT_MOVABLE
+                return Error::NotMovable.to_int()
             }
 
             let val = get_cell(store.board, index)

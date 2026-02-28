@@ -11,10 +11,7 @@
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
 use shared::{
-    ERR_INVALID_INDEX,
-    ERR_NOT_MOVABLE,
-    ERR_MISSING_LOCK,
-    ERR_ALREADY_INITIALIZED,
+    Error,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -72,10 +69,10 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
 
         SetCell2D { row, col, value } -> u256 uses (mut store) {
             if store.initialized != 0 {
-                return ERR_ALREADY_INITIALIZED
+                return Error::AlreadyInitialized.to_int()
             }
             if row > 3 || col > 3 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
             store.board[row as usize][col as usize] = value
             if row == 3 && col == 3 {
@@ -92,11 +89,11 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
                 message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
 
             if row > 3 || col > 3 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
 
             let r_idx = row as usize
@@ -121,7 +118,7 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
             let col_diff = if c_idx > empty_col { c_idx - empty_col } else { empty_col - c_idx }
             let is_adjacent = (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
             if !is_adjacent {
-                return ERR_NOT_MOVABLE
+                return Error::NotMovable.to_int()
             }
 
             let val = store.board[r_idx][c_idx]

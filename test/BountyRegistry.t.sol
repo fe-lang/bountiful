@@ -6,12 +6,12 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 
 contract BountyRegistryTest is Test {
-    // Error codes from shared/src/lib.fe
+    // Error codes from shared/src/lib.fe (Error enum, sequential)
     uint256 constant ERR_MISSING_LOCK = 3;
-    uint256 constant ERR_ALREADY_LOCKED = 10;
-    uint256 constant ERR_INVALID_CLAIM = 11;
-    uint256 constant ERR_ONLY_ADMIN = 12;
-    uint256 constant ERR_INVALID_DEPOSIT = 14;
+    uint256 constant ERR_ALREADY_LOCKED = 4;
+    uint256 constant ERR_INVALID_CLAIM = 5;
+    uint256 constant ERR_ONLY_ADMIN = 6;
+    uint256 constant ERR_INVALID_DEPOSIT = 8;
     uint256 constant LOCK_PERIOD = 1000;
 
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";

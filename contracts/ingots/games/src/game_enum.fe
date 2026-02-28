@@ -12,10 +12,7 @@
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert}
 use shared::{
-    ERR_INVALID_INDEX,
-    ERR_NOT_MOVABLE,
-    ERR_MISSING_LOCK,
-    ERR_ALREADY_INITIALIZED,
+    Error,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -108,10 +105,10 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
         SetCell { index, value } -> u256 uses (mut store) {
             if store.initialized != 0 {
-                return ERR_ALREADY_INITIALIZED
+                return Error::AlreadyInitialized.to_int()
             }
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
             store.board[index as usize] = value
             if index == 15 {
@@ -128,11 +125,11 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
                 message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
 
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
 
             let idx = index as usize
@@ -175,7 +172,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
             }
 
             if !can_swap {
-                return ERR_NOT_MOVABLE
+                return Error::NotMovable.to_int()
             }
 
             let val = store.board[idx]

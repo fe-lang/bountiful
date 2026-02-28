@@ -5,10 +5,7 @@
 use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use shared::{
-    ERR_INVALID_INDEX,
-    ERR_NOT_MOVABLE,
-    ERR_MISSING_LOCK,
-    ERR_ALREADY_INITIALIZED,
+    Error,
     winning_value,
     LockValidatorMsg,
 }
@@ -76,10 +73,10 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
         SetCell { index, value } -> u256 uses (mut store) {
             if store.initialized != 0 {
-                return ERR_ALREADY_INITIALIZED
+                return Error::AlreadyInitialized.to_int()
             }
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
             store.board.set(key: index, value)
             if index == 15 {
@@ -96,11 +93,11 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
                 message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
             )
             if lock_result != 0 {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
 
             if index > 15 {
-                return ERR_INVALID_INDEX
+                return Error::InvalidIndex.to_int()
             }
 
             let mut empty_idx: u256 = 16
@@ -114,7 +111,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
             let encoded = store.moves.get(key: empty_idx)
             if !is_movable_to(encoded, index) {
-                return ERR_NOT_MOVABLE
+                return Error::NotMovable.to_int()
             }
 
             let val = store.board.get(key: index)
@@ -211,18 +208,18 @@ fn test_game_invalid_move() uses (evm: mut Evm) {
 
     // Move index 0 — not adjacent to empty at 14
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
-    assert(move_res == ERR_NOT_MOVABLE)
+    assert(move_res == Error::NotMovable.to_int())
 }
 
 #[test]
 fn test_game_move_without_lock() uses (evm: mut Evm) {
-    // DummyLockValidator returns ERR_MISSING_LOCK — simulates no lock
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (ERR_MISSING_LOCK,), salt: 40)
+    // DummyLockValidator returns Error::MissingLock — simulates no lock
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (Error::MissingLock.to_int(),), salt: 40)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 41)
 
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 0, value: 1 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
 
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
-    assert(move_res == ERR_MISSING_LOCK)
+    assert(move_res == Error::MissingLock.to_int())
 }

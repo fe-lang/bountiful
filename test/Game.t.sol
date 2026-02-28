@@ -7,7 +7,7 @@ import {IGame} from "../src/interfaces/IGame.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 
 contract GameTest is Test {
-    // Error codes from shared/src/lib.fe
+    // Error codes from shared/src/lib.fe (Error enum, sequential)
     uint256 constant ERR_NOT_MOVABLE = 2;
     uint256 constant ERR_MISSING_LOCK = 3;
 

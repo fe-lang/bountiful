@@ -1,7 +1,7 @@
 // =============================================================================
 // Bountiful — Shared definitions
 //
-// Error codes, constants, helper functions, and cross-contract msg interfaces
+// Error enum, constants, helper functions, and cross-contract msg interfaces
 // used by both the Game (challenge) and BountyRegistry (platform) contracts.
 // =============================================================================
 
@@ -9,17 +9,35 @@ use std::abi::sol
 use std::evm::Address
 
 // =============================================================================
-// Error codes
+// Error enum
 // =============================================================================
 
-pub const ERR_INVALID_INDEX: u256 = 1
-pub const ERR_NOT_MOVABLE: u256 = 2
-pub const ERR_MISSING_LOCK: u256 = 3
-pub const ERR_ALREADY_LOCKED: u256 = 10
-pub const ERR_INVALID_CLAIM: u256 = 11
-pub const ERR_ONLY_ADMIN: u256 = 12
-pub const ERR_ALREADY_INITIALIZED: u256 = 13
-pub const ERR_INVALID_DEPOSIT: u256 = 14
+pub enum Error {
+    InvalidIndex,
+    NotMovable,
+    MissingLock,
+    AlreadyLocked,
+    InvalidClaim,
+    OnlyAdmin,
+    AlreadyInitialized,
+    InvalidDeposit,
+}
+
+impl Error {
+    pub fn to_int(self) -> u256 {
+        match self {
+            Self::InvalidIndex => 1
+            Self::NotMovable => 2
+            Self::MissingLock => 3
+            Self::AlreadyLocked => 4
+            Self::InvalidClaim => 5
+            Self::OnlyAdmin => 6
+            Self::AlreadyInitialized => 7
+            Self::InvalidDeposit => 8
+        }
+    }
+}
+
 
 // =============================================================================
 // Game constants

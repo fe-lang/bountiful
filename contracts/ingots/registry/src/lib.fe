@@ -6,11 +6,7 @@ use std::abi::sol
 use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use std::evm::ops
 use shared::{
-    ERR_ALREADY_LOCKED,
-    ERR_MISSING_LOCK,
-    ERR_ONLY_ADMIN,
-    ERR_INVALID_CLAIM,
-    ERR_INVALID_DEPOSIT,
+    Error,
     LOCK_PERIOD,
     SolvableMsg,
 }
@@ -58,10 +54,10 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
     recv RegistryMsg {
         Lock -> u256 uses (mut store, ctx) {
             if store.lock_valid_until_block > ctx.block_number() {
-                return ERR_ALREADY_LOCKED
+                return Error::AlreadyLocked.to_int()
             }
             if ctx.value() < store.lock_deposit {
-                return ERR_INVALID_DEPOSIT
+                return Error::InvalidDeposit.to_int()
             }
             store.lock_claimer = ctx.caller()
             store.lock_valid_until_block = ctx.block_number() + LOCK_PERIOD
@@ -74,7 +70,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
         RegisterChallenge { challenge } -> u256 uses (mut store, ctx) {
             if ctx.caller() != store.admin {
-                return ERR_ONLY_ADMIN
+                return Error::OnlyAdmin.to_int()
             }
             store.open_challenges.set(key: challenge, value: 1)
             return 0
@@ -82,10 +78,10 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
         RemoveChallenge { challenge } -> u256 uses (mut store, ctx) {
             if ctx.caller() != store.admin {
-                return ERR_ONLY_ADMIN
+                return Error::OnlyAdmin.to_int()
             }
             if store.lock_valid_until_block > ctx.block_number() {
-                return ERR_ALREADY_LOCKED
+                return Error::AlreadyLocked.to_int()
             }
             store.open_challenges.set(key: challenge, value: 0)
             return 0
@@ -97,13 +93,13 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
         Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
             if store.lock_claimer != ctx.caller() {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
             if store.lock_valid_until_block <= ctx.block_number() {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
             if store.open_challenges.get(key: challenge) != 1 {
-                return ERR_INVALID_CLAIM
+                return Error::InvalidClaim.to_int()
             }
             // Cross-contract call to check if puzzle is solved
             let solved: u256 = call.call(
@@ -113,7 +109,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
                 message: SolvableMsg::IsSolved {}
             )
             if solved != 1 {
-                return ERR_INVALID_CLAIM
+                return Error::InvalidClaim.to_int()
             }
             // Send entire contract balance to claimer
             ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
@@ -123,20 +119,20 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
         ValidateOwnsLock { owner } -> u256 uses (store, ctx) {
             if store.lock_claimer != owner {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
             if store.lock_valid_until_block <= ctx.block_number() {
-                return ERR_MISSING_LOCK
+                return Error::MissingLock.to_int()
             }
             return 0
         }
 
         Withdraw -> u256 uses (store, ctx) {
             if ctx.caller() != store.admin {
-                return ERR_ONLY_ADMIN
+                return Error::OnlyAdmin.to_int()
             }
             if store.lock_valid_until_block > ctx.block_number() {
-                return ERR_ALREADY_LOCKED
+                return Error::AlreadyLocked.to_int()
             }
             ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
             return 0
@@ -171,7 +167,7 @@ fn test_registry_lock() uses (evm: mut Evm) {
 
     // Can't lock again
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
-    assert(res == ERR_ALREADY_LOCKED)
+    assert(res == Error::AlreadyLocked.to_int())
 }
 
 #[test]
@@ -183,7 +179,7 @@ fn test_registry_non_admin_register() uses (evm: mut Evm) {
         addr: registry, gas: 100000, value: 0,
         message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
     )
-    assert(res == ERR_ONLY_ADMIN)
+    assert(res == Error::OnlyAdmin.to_int())
 }
 
 #[test]
@@ -266,7 +262,7 @@ fn test_registry_remove_challenge_while_locked() uses (evm: mut Evm) {
         addr: registry, gas: 100000, value: 0,
         message: RegistryMsg::RemoveChallenge { challenge: Address { inner: 12345 } }
     )
-    assert(res == ERR_ALREADY_LOCKED)
+    assert(res == Error::AlreadyLocked.to_int())
 
     // Challenge still open
     let is_open: u256 = evm.call(
@@ -296,7 +292,7 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
         addr: registry, gas: 500000, value: 0,
         message: RegistryMsg::Claim { challenge: game }
     )
-    assert(claim_res == ERR_MISSING_LOCK)
+    assert(claim_res == Error::MissingLock.to_int())
 }
 
 #[test]
@@ -315,7 +311,7 @@ fn test_registry_claim_unregistered() uses (evm: mut Evm) {
         addr: registry, gas: 500000, value: 0,
         message: RegistryMsg::Claim { challenge: game }
     )
-    assert(res == ERR_INVALID_CLAIM)
+    assert(res == Error::InvalidClaim.to_int())
 }
 
 #[test]
@@ -341,7 +337,7 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
         addr: registry, gas: 500000, value: 0,
         message: RegistryMsg::Claim { challenge: game }
     )
-    assert(claim_res == ERR_INVALID_CLAIM)
+    assert(claim_res == Error::InvalidClaim.to_int())
 }
 
 #[test]
@@ -393,7 +389,7 @@ fn test_registry_lock_requires_deposit() uses (evm: mut Evm) {
 
     // Try to lock with value: 0 — should fail (deposit required)
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
-    assert(res == ERR_INVALID_DEPOSIT)
+    assert(res == Error::InvalidDeposit.to_int())
 }
 
 #[test]
@@ -416,7 +412,7 @@ fn test_registry_withdraw_while_locked() uses (evm: mut Evm) {
 
     // Try to withdraw while locked — should fail
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Withdraw {})
-    assert(res == ERR_ALREADY_LOCKED)
+    assert(res == Error::AlreadyLocked.to_int())
 }
 
 #[test]
@@ -425,7 +421,7 @@ fn test_registry_non_admin_withdraw() uses (evm: mut Evm) {
     let registry = evm.create2<BountyRegistry>(value: 0, args: (Address { inner: 999 }, 0), salt: 73)
 
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Withdraw {})
-    assert(res == ERR_ONLY_ADMIN)
+    assert(res == Error::OnlyAdmin.to_int())
 }
 
 #[test]
