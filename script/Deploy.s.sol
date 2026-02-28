@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 import {Script, console} from "forge-std/Script.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
-import {IGame} from "../src/interfaces/IGame.sol";
+
+interface IGame {
+    function setCell(uint256 index, uint256 value) external returns (uint256);
+}
 
 contract Deploy is Script {
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";

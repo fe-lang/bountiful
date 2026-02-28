@@ -3,8 +3,14 @@ pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
-import {IGame} from "../src/interfaces/IGame.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
+
+interface IGame {
+    function getBoard(uint256 index) external view returns (uint256);
+    function isSolved() external view returns (uint256);
+    function moveField(uint256 index) external returns (uint256);
+    function setCell(uint256 index, uint256 value) external returns (uint256);
+}
 
 contract GameTest is Test {
     // Error codes from shared/src/lib.fe (Error enum, sequential)
