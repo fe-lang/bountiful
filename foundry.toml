@@ -1,5 +1,9 @@
 [profile.default]
 src = "src"
 test = "test"
+script = "script"
 out = "forge-out"
 fs_permissions = [{ access = "read", path = "./" }]
+
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC_URL}"
