@@ -56,7 +56,7 @@ pub fn winning_value(index: u256) -> u256 {
 
 pub msg SolvableMsg {
     #[selector = sol("isSolved()")]
-    IsSolved -> u256,
+    IsSolved -> bool,
 }
 
 pub msg LockValidatorMsg {

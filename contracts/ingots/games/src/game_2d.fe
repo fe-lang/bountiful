@@ -26,7 +26,7 @@ pub msg Game2DMsg {
     #[selector = sol("getBoard(uint256,uint256)")]
     GetBoard { row: u256, col: u256 } -> u256,
     #[selector = sol("isSolved()")]
-    IsSolved -> u256,
+    IsSolved -> bool,
     #[selector = sol("moveField(uint256,uint256)")]
     MoveField { row: u256, col: u256 } -> u256,
     #[selector = sol("setCell2D(uint256,uint256,uint256)")]
@@ -52,19 +52,19 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
             store.board[row as usize][col as usize]
         }
 
-        IsSolved -> u256 uses (store) {
+        IsSolved -> bool uses (store) {
             let mut row: usize = 0
             while row < 4 {
                 let mut col: usize = 0
                 while col < 4 {
                     if store.board[row][col] != winning_value_2d(row, col) {
-                        return 0
+                        return false
                     }
                     col += 1
                 }
                 row += 1
             }
-            return 1
+            return true
         }
 
         SetCell2D { row, col, value } -> u256 uses (mut store) {
@@ -156,8 +156,8 @@ fn test_2d_solved() uses (evm: mut Evm) {
     let v12: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 1, col: 2 })
     assert(v12 == 7)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
+    assert(solved)
 }
 
 #[test]
@@ -181,6 +181,6 @@ fn test_2d_move_and_solve() uses (evm: mut Evm) {
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
     assert(move_res == 0)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
+    assert(solved)
 }

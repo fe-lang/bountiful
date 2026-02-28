@@ -42,7 +42,7 @@ pub msg GameBitboardMsg {
     #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
     #[selector = sol("isSolved()")]
-    IsSolved -> u256,
+    IsSolved -> bool,
     #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
     #[selector = sol("setCell(uint256,uint256)")]
@@ -86,8 +86,8 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
             get_cell(store.board, index)
         }
 
-        IsSolved -> u256 uses (store) {
-            if store.board == winning_board() { 1 } else { 0 }
+        IsSolved -> bool uses (store) {
+            store.board == winning_board()
         }
 
         SetCell { index, value } -> u256 uses (mut store) {
@@ -164,8 +164,8 @@ fn test_bitboard_solved() uses (evm: mut Evm) {
     let v14: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::GetBoard { index: 14 })
     assert(v14 == 15)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(solved)
 }
 
 #[test]
@@ -184,6 +184,6 @@ fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 15 })
     assert(move_res == 0)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(solved)
 }

@@ -7,7 +7,7 @@ import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 
 interface IGame {
     function getBoard(uint256 index) external view returns (uint256);
-    function isSolved() external view returns (uint256);
+    function isSolved() external view returns (bool);
     function moveField(uint256 index) external returns (uint256);
     function setCell(uint256 index, uint256 value) external returns (uint256);
 }
@@ -84,8 +84,7 @@ contract GameTest is Test {
 
         setupWinningBoard(game);
 
-        uint256 solved = game.isSolved();
-        assertEq(solved, 1, "winning board should be solved");
+        assertTrue(game.isSolved(), "winning board should be solved");
     }
 
     function test_unsolvedBoard() public {
@@ -94,8 +93,7 @@ contract GameTest is Test {
 
         setupAlmostSolvedBoard(game);
 
-        uint256 solved = game.isSolved();
-        assertEq(solved, 0, "almost-solved board should not be solved");
+        assertFalse(game.isSolved(), "almost-solved board should not be solved");
     }
 
     // =========================================================================
@@ -112,8 +110,7 @@ contract GameTest is Test {
         uint256 res = game.moveField(15);
         assertEq(res, 0, "valid move should succeed");
 
-        uint256 solved = game.isSolved();
-        assertEq(solved, 1, "board should be solved after move");
+        assertTrue(game.isSolved(), "board should be solved after move");
     }
 
     function test_invalidMove() public {
@@ -164,8 +161,7 @@ contract GameTest is Test {
         res = game.moveField(15);
         assertEq(res, 0, "move with registry lock should succeed");
 
-        uint256 solved = game.isSolved();
-        assertEq(solved, 1, "board solved after move");
+        assertTrue(game.isSolved(), "board solved after move");
     }
 
     // Allow receiving ETH

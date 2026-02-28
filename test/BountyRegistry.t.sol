@@ -32,7 +32,7 @@ contract BountyRegistryTest is Test {
         return IBountyRegistry(addr);
     }
 
-    function deployDummyGame(uint256 isSolved) internal returns (address) {
+    function deployDummyGame(bool isSolved) internal returns (address) {
         return FeDeployer.deployFeWithArgs(
             vm, DUMMY_GAME_BIN, abi.encode(isSolved)
         );
@@ -48,14 +48,12 @@ contract BountyRegistryTest is Test {
         uint256 res = registry.lock();
         assertEq(res, 0, "lock should succeed");
 
-        uint256 locked = registry.isLocked();
-        assertEq(locked, 1, "should be locked");
+        assertTrue(registry.isLocked(), "should be locked");
 
         // Advance past LOCK_PERIOD
         vm.roll(block.number + LOCK_PERIOD + 1);
 
-        locked = registry.isLocked();
-        assertEq(locked, 0, "lock should have expired");
+        assertFalse(registry.isLocked(), "lock should have expired");
     }
 
     // =========================================================================
@@ -69,8 +67,7 @@ contract BountyRegistryTest is Test {
         uint256 res = registry.lock{value: 0.1 ether}();
         assertEq(res, 0, "lock with sufficient deposit should succeed");
 
-        uint256 locked = registry.isLocked();
-        assertEq(locked, 1, "should be locked");
+        assertTrue(registry.isLocked(), "should be locked");
     }
 
     function test_lockRejectedWithoutDeposit() public {
@@ -107,22 +104,19 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         // Not open initially
-        uint256 isOpen = registry.isOpenChallenge(address(0x1234));
-        assertEq(isOpen, 0, "not open initially");
+        assertFalse(registry.isOpenChallenge(address(0x1234)), "not open initially");
 
         // Register
         uint256 res = registry.registerChallenge(address(0x1234));
         assertEq(res, 0, "register should succeed");
 
-        isOpen = registry.isOpenChallenge(address(0x1234));
-        assertEq(isOpen, 1, "should be open after register");
+        assertTrue(registry.isOpenChallenge(address(0x1234)), "should be open after register");
 
         // Remove (unlocked)
         res = registry.removeChallenge(address(0x1234));
         assertEq(res, 0, "remove should succeed");
 
-        isOpen = registry.isOpenChallenge(address(0x1234));
-        assertEq(isOpen, 0, "should be closed after remove");
+        assertFalse(registry.isOpenChallenge(address(0x1234)), "should be closed after remove");
     }
 
     // =========================================================================
@@ -145,7 +139,7 @@ contract BountyRegistryTest is Test {
 
     function test_claimRequiresLock() public {
         IBountyRegistry registry = deployRegistry(0);
-        address game = deployDummyGame(1); // solved
+        address game = deployDummyGame(true); // solved
 
         registry.registerChallenge(game);
 
@@ -156,7 +150,7 @@ contract BountyRegistryTest is Test {
 
     function test_claimRequiresSolved() public {
         IBountyRegistry registry = deployRegistry(0);
-        address game = deployDummyGame(0); // NOT solved
+        address game = deployDummyGame(false); // NOT solved
 
         registry.registerChallenge(game);
         registry.lock();
@@ -167,7 +161,7 @@ contract BountyRegistryTest is Test {
 
     function test_fullBountyClaimWithETH() public {
         IBountyRegistry registry = deployRegistry(0);
-        address game = deployDummyGame(1); // solved
+        address game = deployDummyGame(true); // solved
 
         // Fund the registry with 10 ETH
         vm.deal(address(registry), 10 ether);
@@ -190,8 +184,7 @@ contract BountyRegistryTest is Test {
         assertEq(balanceAfter - balanceBefore, 10 ether, "should receive 10 ETH");
 
         // Challenge should be closed
-        uint256 isOpen = registry.isOpenChallenge(game);
-        assertEq(isOpen, 0, "challenge closed after claim");
+        assertFalse(registry.isOpenChallenge(game), "challenge closed after claim");
     }
 
     // =========================================================================

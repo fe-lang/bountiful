@@ -66,7 +66,7 @@ pub msg GameEnumMsg {
     #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
     #[selector = sol("isSolved()")]
-    IsSolved -> u256,
+    IsSolved -> bool,
     #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
     #[selector = sol("setCell(uint256,uint256)")]
@@ -92,15 +92,15 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
             store.board[index as usize]
         }
 
-        IsSolved -> u256 uses (store) {
+        IsSolved -> bool uses (store) {
             let mut i: usize = 0
             while i < 16 {
                 if store.board[i] != winning_value_enum(i) {
-                    return 0
+                    return false
                 }
                 i += 1
             }
-            return 1
+            return true
         }
 
         SetCell { index, value } -> u256 uses (mut store) {
@@ -202,8 +202,8 @@ fn test_enum_solved() uses (evm: mut Evm) {
     let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameEnumMsg::GetBoard { index: 0 })
     assert(v0 == 1)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
+    assert(solved)
 }
 
 #[test]
@@ -222,6 +222,6 @@ fn test_enum_move_and_solve() uses (evm: mut Evm) {
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 15 })
     assert(move_res == 0)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameEnumMsg::IsSolved {})
+    assert(solved)
 }

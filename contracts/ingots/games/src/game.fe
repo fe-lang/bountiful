@@ -16,7 +16,7 @@ pub msg GameMsg {
     #[selector = sol("getBoard(uint256)")]
     GetBoard { index: u256 } -> u256,
     #[selector = sol("isSolved()")]
-    IsSolved -> u256,
+    IsSolved -> bool,
     #[selector = sol("moveField(uint256)")]
     MoveField { index: u256 } -> u256,
     #[selector = sol("setCell(uint256,uint256)")]
@@ -60,15 +60,15 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
             store.board.get(key: index)
         }
 
-        IsSolved -> u256 uses (store) {
+        IsSolved -> bool uses (store) {
             let mut i: u256 = 0
             while i < 16 {
                 if store.board.get(key: i) != winning_value(i) {
-                    return 0
+                    return false
                 }
                 i += 1
             }
-            return 1
+            return true
         }
 
         SetCell { index, value } -> u256 uses (mut store) {
@@ -149,8 +149,8 @@ fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
     let v15: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::GetBoard { index: 15 })
     assert(v15 == 0)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
+    assert(solved)
 }
 
 #[test]
@@ -167,8 +167,8 @@ fn test_game_unsolved() uses (evm: mut Evm) {
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 14, value: 0 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 15 })
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
-    assert(solved == 0)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
+    assert(!solved)
 }
 
 #[test]
@@ -188,8 +188,8 @@ fn test_game_move_and_solve() uses (evm: mut Evm) {
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
     assert(move_res == 0)
 
-    let solved: u256 = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
-    assert(solved == 1)
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
+    assert(solved)
 }
 
 #[test]
