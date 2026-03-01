@@ -102,12 +102,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
                 return Error::InvalidClaim.to_int()
             }
             // Cross-contract call to check if puzzle is solved
-            let solved: bool = call.call(
-                addr: challenge,
-                gas: 100000,
-                value: 0,
-                message: SolvableMsg::IsSolved {}
-            )
+            let solved: bool = challenge.call(SolvableMsg::IsSolved {})
             if !solved {
                 return Error::InvalidClaim.to_int()
             }

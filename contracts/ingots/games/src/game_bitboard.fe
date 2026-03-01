@@ -105,12 +105,7 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
         }
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
-            let lock_result: u256 = call.call(
-                addr: store.lock_validator,
-                gas: 100000,
-                value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
-            )
+            let lock_result: u256 = store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() })
             if lock_result != 0 {
                 return Error::MissingLock.to_int()
             }
