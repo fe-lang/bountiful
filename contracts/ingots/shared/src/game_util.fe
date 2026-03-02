@@ -51,3 +51,59 @@ fn test_encode_decode_moves() uses (evm: mut Evm) {
     assert(decode_move(encoded2, 2) == 10)
     assert(decode_move(encoded2, 3) == 13)
 }
+
+#[test]
+fn test_is_movable_to() uses (evm: mut Evm) {
+    // Cell 5 neighbors: 1, 4, 6, 9
+    let encoded = encode_moves(1, 4, 6, 9)
+
+    // Valid targets
+    assert(is_movable_to(encoded, 1))
+    assert(is_movable_to(encoded, 4))
+    assert(is_movable_to(encoded, 6))
+    assert(is_movable_to(encoded, 9))
+
+    // Invalid targets
+    assert(!is_movable_to(encoded, 0))
+    assert(!is_movable_to(encoded, 2))
+    assert(!is_movable_to(encoded, 5))
+    assert(!is_movable_to(encoded, 15))
+}
+
+#[test]
+fn test_is_movable_to_with_invalid_slots() uses (evm: mut Evm) {
+    // Corner cell: only 2 neighbors
+    let encoded = encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE)
+
+    assert(is_movable_to(encoded, 1))
+    assert(is_movable_to(encoded, 4))
+    assert(!is_movable_to(encoded, 0))
+    assert(!is_movable_to(encoded, 5))
+
+    // Note: INVALID_MOVE (666) IS stored in the encoded data, so is_movable_to
+    // matches it. This is safe because valid cell indices are 0-15, never 666.
+    assert(is_movable_to(encoded, INVALID_MOVE))
+}
+
+#[test]
+fn test_encode_all_invalid() uses (evm: mut Evm) {
+    let encoded = encode_moves(INVALID_MOVE, INVALID_MOVE, INVALID_MOVE, INVALID_MOVE)
+    assert(decode_move(encoded, 0) == INVALID_MOVE)
+    assert(decode_move(encoded, 1) == INVALID_MOVE)
+    assert(decode_move(encoded, 2) == INVALID_MOVE)
+    assert(decode_move(encoded, 3) == INVALID_MOVE)
+
+    // No valid moves possible
+    assert(!is_movable_to(encoded, 0))
+    assert(!is_movable_to(encoded, 15))
+}
+
+#[test]
+fn test_decode_move_all_slots() uses (evm: mut Evm) {
+    // Use distinct values for each slot to verify correct extraction
+    let encoded = encode_moves(0, 7, 11, 15)
+    assert(decode_move(encoded, 0) == 0)
+    assert(decode_move(encoded, 1) == 7)
+    assert(decode_move(encoded, 2) == 11)
+    assert(decode_move(encoded, 3) == 15)
+}

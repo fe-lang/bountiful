@@ -238,6 +238,231 @@ contract BountyRegistryTest is Test {
         assertEq(bal, 3 ether, "balance after funding");
     }
 
+    // =========================================================================
+    // Claim with expired lock
+    // =========================================================================
+
+    function test_claimWithExpiredLock() public {
+        IBountyRegistry registry = deployRegistry(0);
+        address game = deployDummyGame(true); // solved
+
+        registry.registerChallenge(game);
+        registry.lock();
+
+        // Advance past LOCK_PERIOD so lock expires
+        vm.roll(block.number + LOCK_PERIOD + 1);
+
+        uint256 res = registry.claim(game);
+        assertEq(res, ERR_MISSING_LOCK, "claim with expired lock should fail");
+    }
+
+    // =========================================================================
+    // Re-lock after expiry
+    // =========================================================================
+
+    function test_relockAfterExpiry() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        // First lock
+        uint256 res1 = registry.lock();
+        assertEq(res1, 0, "first lock should succeed");
+        assertTrue(registry.isLocked(), "should be locked");
+
+        // Advance past LOCK_PERIOD
+        vm.roll(block.number + LOCK_PERIOD + 1);
+        assertFalse(registry.isLocked(), "lock should have expired");
+
+        // Re-lock should succeed
+        uint256 res2 = registry.lock();
+        assertEq(res2, 0, "re-lock should succeed after expiry");
+        assertTrue(registry.isLocked(), "should be locked again");
+    }
+
+    // =========================================================================
+    // Claim by non-lock-holder
+    // =========================================================================
+
+    function test_claimByNonLockHolder() public {
+        IBountyRegistry registry = deployRegistry(0);
+        address game = deployDummyGame(true); // solved
+
+        registry.registerChallenge(game);
+
+        // Admin (this contract) locks
+        registry.lock();
+
+        // Attacker tries to claim — not the lock holder
+        vm.prank(attacker);
+        uint256 res = registry.claim(game);
+        assertEq(res, ERR_MISSING_LOCK, "non-lock-holder claim should fail");
+    }
+
+    // =========================================================================
+    // ValidateOwnsLock
+    // =========================================================================
+
+    function test_validateOwnsLockCorrectOwner() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        registry.lock();
+
+        uint256 res = registry.validateOwnsLock(address(this));
+        assertEq(res, 0, "correct owner should validate");
+    }
+
+    function test_validateOwnsLockWrongOwner() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        registry.lock();
+
+        uint256 res = registry.validateOwnsLock(attacker);
+        assertEq(res, ERR_MISSING_LOCK, "wrong owner should fail");
+    }
+
+    function test_validateOwnsLockExpired() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        registry.lock();
+
+        // Advance past LOCK_PERIOD
+        vm.roll(block.number + LOCK_PERIOD + 1);
+
+        uint256 res = registry.validateOwnsLock(address(this));
+        assertEq(res, ERR_MISSING_LOCK, "expired lock should fail validation");
+    }
+
+    function test_validateOwnsLockNoLock() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        // No lock acquired
+        uint256 res = registry.validateOwnsLock(address(this));
+        assertEq(res, ERR_MISSING_LOCK, "no lock should fail validation");
+    }
+
+    // =========================================================================
+    // Lock with insufficient deposit
+    // =========================================================================
+
+    function test_lockWithInsufficientDeposit() public {
+        IBountyRegistry registry = deployRegistry(0.1 ether);
+        vm.deal(admin, 1 ether);
+
+        // Less than required
+        uint256 res = registry.lock{value: 0.05 ether}();
+        assertEq(res, ERR_INVALID_DEPOSIT, "insufficient deposit should fail");
+    }
+
+    function test_lockWithExactDeposit() public {
+        IBountyRegistry registry = deployRegistry(0.1 ether);
+        vm.deal(admin, 1 ether);
+
+        uint256 res = registry.lock{value: 0.1 ether}();
+        assertEq(res, 0, "exact deposit should succeed");
+        assertTrue(registry.isLocked(), "should be locked");
+    }
+
+    function test_lockWithExcessDeposit() public {
+        IBountyRegistry registry = deployRegistry(0.1 ether);
+        vm.deal(admin, 1 ether);
+
+        uint256 res = registry.lock{value: 0.5 ether}();
+        assertEq(res, 0, "excess deposit should succeed");
+        assertTrue(registry.isLocked(), "should be locked");
+    }
+
+    // =========================================================================
+    // Double register / double claim
+    // =========================================================================
+
+    function test_doubleRegisterSameChallenge() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        uint256 res1 = registry.registerChallenge(address(0x1234));
+        assertEq(res1, 0, "first register should succeed");
+
+        uint256 res2 = registry.registerChallenge(address(0x1234));
+        assertEq(res2, 0, "second register should succeed (idempotent)");
+
+        assertTrue(registry.isOpenChallenge(address(0x1234)), "should still be open");
+    }
+
+    function test_claimAlreadyClaimed() public {
+        IBountyRegistry registry = deployRegistry(0);
+        address game = deployDummyGame(true); // solved
+
+        registry.registerChallenge(game);
+        registry.lock();
+
+        uint256 res1 = registry.claim(game);
+        assertEq(res1, 0, "first claim should succeed");
+        assertFalse(registry.isOpenChallenge(game), "challenge should be closed");
+
+        // Try to claim again
+        uint256 res2 = registry.claim(game);
+        assertEq(res2, ERR_INVALID_CLAIM, "second claim should fail");
+    }
+
+    // =========================================================================
+    // Remove never-registered challenge
+    // =========================================================================
+
+    function test_removeNeverRegistered() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        // Remove a challenge that was never registered
+        uint256 res = registry.removeChallenge(address(0x9999));
+        assertEq(res, 0, "remove non-existent should succeed");
+
+        assertFalse(registry.isOpenChallenge(address(0x9999)), "should not be open");
+    }
+
+    // =========================================================================
+    // Remove after lock expires
+    // =========================================================================
+
+    function test_removeAfterLockExpires() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        registry.registerChallenge(address(0x1234));
+        registry.lock();
+
+        // Can't remove while locked
+        uint256 res1 = registry.removeChallenge(address(0x1234));
+        assertEq(res1, ERR_ALREADY_LOCKED, "remove while locked should fail");
+
+        // Advance past LOCK_PERIOD
+        vm.roll(block.number + LOCK_PERIOD + 1);
+
+        // Now remove should succeed
+        uint256 res2 = registry.removeChallenge(address(0x1234));
+        assertEq(res2, 0, "remove after lock expired should succeed");
+
+        assertFalse(registry.isOpenChallenge(address(0x1234)), "should be closed");
+    }
+
+    // =========================================================================
+    // Withdraw after lock expires
+    // =========================================================================
+
+    function test_withdrawAfterLockExpires() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        vm.deal(address(registry), 5 ether);
+        registry.lock();
+
+        // Can't withdraw while locked
+        uint256 res1 = registry.withdraw();
+        assertEq(res1, ERR_ALREADY_LOCKED, "withdraw while locked should fail");
+
+        // Advance past LOCK_PERIOD
+        vm.roll(block.number + LOCK_PERIOD + 1);
+
+        uint256 balanceBefore = admin.balance;
+        uint256 res2 = registry.withdraw();
+        assertEq(res2, 0, "withdraw after lock expired should succeed");
+        assertEq(admin.balance - balanceBefore, 5 ether, "should receive 5 ETH");
+    }
+
     // Allow receiving ETH (for claim/withdraw transfers back to this contract)
     receive() external payable {}
 }

@@ -102,7 +102,12 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
                 return Error::InvalidClaim.to_int()
             }
             // Cross-contract call to check if puzzle is solved
-            let solved: bool = challenge.call(SolvableMsg::IsSolved {})
+            let solved: bool = call.call(
+                addr: challenge,
+                gas: 100000,
+                value: 0,
+                message: SolvableMsg::IsSolved {}
+            )
             if !solved {
                 return Error::InvalidClaim.to_int()
             }
@@ -428,3 +433,141 @@ fn test_registry_get_balance() uses (evm: mut Evm) {
     let balance: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::GetBalance {})
     assert(balance == 0)
 }
+
+#[test]
+fn test_registry_validate_owns_lock_correct_owner() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 80)
+
+    // Lock
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+
+    // ValidateOwnsLock with the correct owner (our address)
+    let res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::ValidateOwnsLock { owner: admin }
+    )
+    assert(res == 0)
+}
+
+#[test]
+fn test_registry_validate_owns_lock_wrong_owner() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 81)
+
+    // Lock (locks for our address)
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+
+    // ValidateOwnsLock with a different address — should fail
+    let res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::ValidateOwnsLock { owner: Address { inner: 12345 } }
+    )
+    assert(res == Error::MissingLock.to_int())
+}
+
+#[test]
+fn test_registry_validate_owns_lock_no_lock() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 82)
+
+    // ValidateOwnsLock without any lock — should fail
+    let res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::ValidateOwnsLock { owner: admin }
+    )
+    assert(res == Error::MissingLock.to_int())
+}
+
+#[test]
+fn test_registry_remove_never_registered() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 83)
+
+    // Remove a challenge that was never registered — should succeed (sets false on non-existent)
+    let res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RemoveChallenge { challenge: Address { inner: 99999 } }
+    )
+    assert(res == 0)
+
+    // Verify it's not open
+    let is_open: bool = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::IsOpenChallenge { challenge: Address { inner: 99999 } }
+    )
+    assert(!is_open)
+}
+
+#[test]
+fn test_registry_double_register() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 84)
+
+    let challenge = Address { inner: 12345 }
+
+    // Register once
+    let res1: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RegisterChallenge { challenge }
+    )
+    assert(res1 == 0)
+
+    // Register same challenge again — should succeed (idempotent)
+    let res2: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RegisterChallenge { challenge }
+    )
+    assert(res2 == 0)
+
+    // Should still be open
+    let is_open: bool = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::IsOpenChallenge { challenge }
+    )
+    assert(is_open)
+}
+
+#[test]
+fn test_registry_claim_already_claimed() uses (evm: mut Evm) {
+    let admin = evm.address()
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 85)
+
+    // Deploy solved DummyGame
+    let game = evm.create2<DummyGame>(value: 0, args: (true,), salt: 86)
+
+    // Register, lock, claim
+    evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RegisterChallenge { challenge: game }
+    )
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock {})
+    let claim_res: u256 = evm.call(
+        addr: registry, gas: 500000, value: 0,
+        message: RegistryMsg::Claim { challenge: game }
+    )
+    assert(claim_res == 0)
+
+    // Try to claim again — challenge is now closed
+    let claim_res2: u256 = evm.call(
+        addr: registry, gas: 500000, value: 0,
+        message: RegistryMsg::Claim { challenge: game }
+    )
+    assert(claim_res2 == Error::InvalidClaim.to_int())
+}
+
+#[test]
+fn test_registry_non_admin_remove() uses (evm: mut Evm) {
+    // Deploy with a different admin so our caller is NOT admin
+    let registry = evm.create2<BountyRegistry>(value: 0, args: (Address { inner: 999 }, 0), salt: 87)
+
+    let res: u256 = evm.call(
+        addr: registry, gas: 100000, value: 0,
+        message: RegistryMsg::RemoveChallenge { challenge: Address { inner: 12345 } }
+    )
+    assert(res == Error::OnlyAdmin.to_int())
+}
+
+// Note: Deposit tests (insufficient/exact/excess) require ETH funding
+// which is not available in Fe test context. These are covered by Forge tests
+// in test/BountyRegistry.t.sol (test_lockWithInsufficientDeposit, etc.)

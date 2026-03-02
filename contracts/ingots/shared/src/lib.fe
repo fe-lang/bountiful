@@ -6,7 +6,7 @@
 // =============================================================================
 
 use std::abi::sol
-use std::evm::Address
+use std::evm::{Address, Evm, assert}
 
 // =============================================================================
 // Error enum
@@ -62,4 +62,32 @@ pub msg SolvableMsg {
 pub msg LockValidatorMsg {
     #[selector = sol("validateOwnsLock(address)")]
     ValidateOwnsLock { owner: Address } -> u256,
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[test]
+fn test_error_to_int_all_variants() uses (evm: mut Evm) {
+    assert(Error::InvalidIndex.to_int() == 1)
+    assert(Error::NotMovable.to_int() == 2)
+    assert(Error::MissingLock.to_int() == 3)
+    assert(Error::AlreadyLocked.to_int() == 4)
+    assert(Error::InvalidClaim.to_int() == 5)
+    assert(Error::OnlyAdmin.to_int() == 6)
+    assert(Error::AlreadyInitialized.to_int() == 7)
+    assert(Error::InvalidDeposit.to_int() == 8)
+}
+
+#[test]
+fn test_winning_value() uses (evm: mut Evm) {
+    // Cells 0-14 should have values 1-15
+    assert(winning_value(0) == 1)
+    assert(winning_value(1) == 2)
+    assert(winning_value(7) == 8)
+    assert(winning_value(13) == 14)
+    assert(winning_value(14) == 15)
+    // Cell 15 is the empty cell (value 0)
+    assert(winning_value(15) == 0)
 }

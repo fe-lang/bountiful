@@ -105,7 +105,12 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
         }
 
         MoveField { index } -> u256 uses (mut store, ctx, mut call) {
-            let lock_result: u256 = store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() })
+            let lock_result: u256 = call.call(
+                addr: store.lock_validator,
+                gas: 100000,
+                value: 0,
+                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
+            )
             if lock_result != 0 {
                 return Error::MissingLock.to_int()
             }
@@ -178,6 +183,128 @@ fn test_bitboard_move_and_solve() uses (evm: mut Evm) {
 
     let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 15 })
     assert(move_res == 0)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test]
+fn test_bitboard_unsolved() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 120)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 121)
+
+    // Board: [1..14, 0, 15] — almost solved
+    let mut i: u256 = 0
+    while i < 14 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 14, value: 0 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(!solved)
+}
+
+#[test]
+fn test_bitboard_invalid_move() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 122)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 123)
+
+    // Board: [1..14, 0, 15] — empty at 14
+    let mut i: u256 = 0
+    while i < 14 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 14, value: 0 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 15 })
+
+    // Move index 0 — not adjacent to empty at 14
+    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 0 })
+    assert(move_res == Error::NotMovable.to_int())
+}
+
+#[test]
+fn test_bitboard_move_without_lock() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (Error::MissingLock.to_int(),), salt: 124)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 125)
+
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 0, value: 1 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 0 })
+
+    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 0 })
+    assert(move_res == Error::MissingLock.to_int())
+}
+
+#[test]
+fn test_bitboard_set_cell_already_initialized() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 126)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 127)
+
+    // Initialize full board
+    let mut i: u256 = 0
+    while i < 15 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 0 })
+
+    // Try to set cell again — should fail
+    let res: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 0, value: 99 })
+    assert(res == Error::AlreadyInitialized.to_int())
+}
+
+#[test]
+fn test_bitboard_set_cell_invalid_index() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 128)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 129)
+
+    let res: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 16, value: 1 })
+    assert(res == Error::InvalidIndex.to_int())
+}
+
+#[test]
+fn test_bitboard_move_field_invalid_index() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 130)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 131)
+
+    let mut i: u256 = 0
+    while i < 15 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 0 })
+
+    let res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 16 })
+    assert(res == Error::InvalidIndex.to_int())
+}
+
+#[test]
+fn test_bitboard_multiple_moves() uses (evm: mut Evm) {
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 132)
+    let game = evm.create2<GameBitboard>(value: 0, args: (validator,), salt: 133)
+
+    // Board: [1..13, 0, 14, 15] — empty at 13
+    let mut i: u256 = 0
+    while i < 13 {
+        evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: i, value: i + 1 })
+        i += 1
+    }
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 13, value: 0 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 14, value: 14 })
+    evm.call(addr: game, gas: 100000, value: 0, message: GameBitboardMsg::SetCell { index: 15, value: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
+    assert(!solved)
+
+    // Move 1: move 14 (index 14) into empty at 13
+    let res1: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 14 })
+    assert(res1 == 0)
+
+    // Move 2: move 15 (index 15) into empty at 14
+    let res2: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameBitboardMsg::MoveField { index: 15 })
+    assert(res2 == 0)
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameBitboardMsg::IsSolved {})
     assert(solved)
