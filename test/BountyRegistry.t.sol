@@ -12,7 +12,7 @@ contract BountyRegistryTest is Test {
     uint256 constant ERR_INVALID_CLAIM = 5;
     uint256 constant ERR_ONLY_ADMIN = 6;
     uint256 constant ERR_INVALID_DEPOSIT = 8;
-    uint256 constant LOCK_PERIOD = 1000;
+    uint256 constant LOCK_PERIOD = 100;
 
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
     string constant DUMMY_GAME_BIN = "contracts/out/DummyGame.bin";

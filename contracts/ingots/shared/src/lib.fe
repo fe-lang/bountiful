@@ -43,7 +43,7 @@ impl Error {
 // Game constants
 // =============================================================================
 
-pub const LOCK_PERIOD: u256 = 1000
+pub const LOCK_PERIOD: u256 = 100
 
 pub fn winning_value(index: u256) -> u256 {
     if index == 15 { return 0 }
