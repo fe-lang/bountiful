@@ -8,7 +8,7 @@ pub contract DummyLockValidator {
     }
 
     recv LockValidatorMsg {
-        ValidateOwnsLock { owner } -> u256 uses (lock_result) {
+        ValidateOwnsLock { owner, challenge } -> u256 uses (lock_result) {
             lock_result
         }
     }

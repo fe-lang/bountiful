@@ -60,8 +60,8 @@ pub msg SolvableMsg {
 }
 
 pub msg LockValidatorMsg {
-    #[selector = sol("validateOwnsLock(address)")]
-    ValidateOwnsLock { owner: Address } -> u256,
+    #[selector = sol("validateOwnsLock(address,address)")]
+    ValidateOwnsLock { owner: Address, challenge: Address } -> u256,
 }
 
 // =============================================================================

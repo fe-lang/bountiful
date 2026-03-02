@@ -44,16 +44,19 @@ contract BountyRegistryTest is Test {
 
     function test_lockTimeoutExpires() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
-        uint256 res = registry.lock();
+        registry.registerChallenge(challenge);
+
+        uint256 res = registry.lock(challenge);
         assertEq(res, 0, "lock should succeed");
 
-        assertTrue(registry.isLocked(), "should be locked");
+        assertTrue(registry.isLocked(challenge), "should be locked");
 
         // Advance past LOCK_PERIOD
         vm.roll(block.number + LOCK_PERIOD + 1);
 
-        assertFalse(registry.isLocked(), "lock should have expired");
+        assertFalse(registry.isLocked(challenge), "lock should have expired");
     }
 
     // =========================================================================
@@ -63,17 +66,23 @@ contract BountyRegistryTest is Test {
     function test_lockWithDeposit() public {
         IBountyRegistry registry = deployRegistry(0.1 ether);
         vm.deal(admin, 1 ether);
+        address challenge = address(0x1234);
 
-        uint256 res = registry.lock{value: 0.1 ether}();
+        registry.registerChallenge(challenge);
+
+        uint256 res = registry.lock{value: 0.1 ether}(challenge);
         assertEq(res, 0, "lock with sufficient deposit should succeed");
 
-        assertTrue(registry.isLocked(), "should be locked");
+        assertTrue(registry.isLocked(challenge), "should be locked");
     }
 
     function test_lockRejectedWithoutDeposit() public {
         IBountyRegistry registry = deployRegistry(0.1 ether);
+        address challenge = address(0x1234);
 
-        uint256 res = registry.lock{value: 0}();
+        registry.registerChallenge(challenge);
+
+        uint256 res = registry.lock{value: 0}(challenge);
         assertEq(res, ERR_INVALID_DEPOSIT, "lock without deposit should fail");
     }
 
@@ -127,7 +136,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         registry.registerChallenge(address(0x1234));
-        registry.lock();
+        registry.lock(address(0x1234));
 
         uint256 res = registry.removeChallenge(address(0x1234));
         assertEq(res, ERR_ALREADY_LOCKED, "remove while locked should fail");
@@ -153,7 +162,7 @@ contract BountyRegistryTest is Test {
         address game = deployDummyGame(false); // NOT solved
 
         registry.registerChallenge(game);
-        registry.lock();
+        registry.lock(game);
 
         uint256 res = registry.claim(game);
         assertEq(res, ERR_INVALID_CLAIM, "claim unsolved should fail");
@@ -170,7 +179,7 @@ contract BountyRegistryTest is Test {
         registry.registerChallenge(game);
 
         // Lock
-        uint256 lockRes = registry.lock();
+        uint256 lockRes = registry.lock(game);
         assertEq(lockRes, 0, "lock should succeed");
 
         uint256 balanceBefore = admin.balance;
@@ -208,8 +217,10 @@ contract BountyRegistryTest is Test {
 
     function test_withdrawBlockedWhileLocked() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
-        registry.lock();
+        registry.registerChallenge(challenge);
+        registry.lock(challenge);
 
         uint256 res = registry.withdraw();
         assertEq(res, ERR_ALREADY_LOCKED, "withdraw while locked should fail");
@@ -247,7 +258,7 @@ contract BountyRegistryTest is Test {
         address game = deployDummyGame(true); // solved
 
         registry.registerChallenge(game);
-        registry.lock();
+        registry.lock(game);
 
         // Advance past LOCK_PERIOD so lock expires
         vm.roll(block.number + LOCK_PERIOD + 1);
@@ -262,20 +273,23 @@ contract BountyRegistryTest is Test {
 
     function test_relockAfterExpiry() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
+
+        registry.registerChallenge(challenge);
 
         // First lock
-        uint256 res1 = registry.lock();
+        uint256 res1 = registry.lock(challenge);
         assertEq(res1, 0, "first lock should succeed");
-        assertTrue(registry.isLocked(), "should be locked");
+        assertTrue(registry.isLocked(challenge), "should be locked");
 
         // Advance past LOCK_PERIOD
         vm.roll(block.number + LOCK_PERIOD + 1);
-        assertFalse(registry.isLocked(), "lock should have expired");
+        assertFalse(registry.isLocked(challenge), "lock should have expired");
 
         // Re-lock should succeed
-        uint256 res2 = registry.lock();
+        uint256 res2 = registry.lock(challenge);
         assertEq(res2, 0, "re-lock should succeed after expiry");
-        assertTrue(registry.isLocked(), "should be locked again");
+        assertTrue(registry.isLocked(challenge), "should be locked again");
     }
 
     // =========================================================================
@@ -288,8 +302,8 @@ contract BountyRegistryTest is Test {
 
         registry.registerChallenge(game);
 
-        // Admin (this contract) locks
-        registry.lock();
+        // Admin (this contract) locks the challenge
+        registry.lock(game);
 
         // Attacker tries to claim — not the lock holder
         vm.prank(attacker);
@@ -303,39 +317,46 @@ contract BountyRegistryTest is Test {
 
     function test_validateOwnsLockCorrectOwner() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
-        registry.lock();
+        registry.registerChallenge(challenge);
+        registry.lock(challenge);
 
-        uint256 res = registry.validateOwnsLock(address(this));
+        uint256 res = registry.validateOwnsLock(address(this), challenge);
         assertEq(res, 0, "correct owner should validate");
     }
 
     function test_validateOwnsLockWrongOwner() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
-        registry.lock();
+        registry.registerChallenge(challenge);
+        registry.lock(challenge);
 
-        uint256 res = registry.validateOwnsLock(attacker);
+        uint256 res = registry.validateOwnsLock(attacker, challenge);
         assertEq(res, ERR_MISSING_LOCK, "wrong owner should fail");
     }
 
     function test_validateOwnsLockExpired() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
-        registry.lock();
+        registry.registerChallenge(challenge);
+        registry.lock(challenge);
 
         // Advance past LOCK_PERIOD
         vm.roll(block.number + LOCK_PERIOD + 1);
 
-        uint256 res = registry.validateOwnsLock(address(this));
+        uint256 res = registry.validateOwnsLock(address(this), challenge);
         assertEq(res, ERR_MISSING_LOCK, "expired lock should fail validation");
     }
 
     function test_validateOwnsLockNoLock() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
         // No lock acquired
-        uint256 res = registry.validateOwnsLock(address(this));
+        uint256 res = registry.validateOwnsLock(address(this), challenge);
         assertEq(res, ERR_MISSING_LOCK, "no lock should fail validation");
     }
 
@@ -346,28 +367,37 @@ contract BountyRegistryTest is Test {
     function test_lockWithInsufficientDeposit() public {
         IBountyRegistry registry = deployRegistry(0.1 ether);
         vm.deal(admin, 1 ether);
+        address challenge = address(0x1234);
+
+        registry.registerChallenge(challenge);
 
         // Less than required
-        uint256 res = registry.lock{value: 0.05 ether}();
+        uint256 res = registry.lock{value: 0.05 ether}(challenge);
         assertEq(res, ERR_INVALID_DEPOSIT, "insufficient deposit should fail");
     }
 
     function test_lockWithExactDeposit() public {
         IBountyRegistry registry = deployRegistry(0.1 ether);
         vm.deal(admin, 1 ether);
+        address challenge = address(0x1234);
 
-        uint256 res = registry.lock{value: 0.1 ether}();
+        registry.registerChallenge(challenge);
+
+        uint256 res = registry.lock{value: 0.1 ether}(challenge);
         assertEq(res, 0, "exact deposit should succeed");
-        assertTrue(registry.isLocked(), "should be locked");
+        assertTrue(registry.isLocked(challenge), "should be locked");
     }
 
     function test_lockWithExcessDeposit() public {
         IBountyRegistry registry = deployRegistry(0.1 ether);
         vm.deal(admin, 1 ether);
+        address challenge = address(0x1234);
 
-        uint256 res = registry.lock{value: 0.5 ether}();
+        registry.registerChallenge(challenge);
+
+        uint256 res = registry.lock{value: 0.5 ether}(challenge);
         assertEq(res, 0, "excess deposit should succeed");
-        assertTrue(registry.isLocked(), "should be locked");
+        assertTrue(registry.isLocked(challenge), "should be locked");
     }
 
     // =========================================================================
@@ -391,7 +421,7 @@ contract BountyRegistryTest is Test {
         address game = deployDummyGame(true); // solved
 
         registry.registerChallenge(game);
-        registry.lock();
+        registry.lock(game);
 
         uint256 res1 = registry.claim(game);
         assertEq(res1, 0, "first claim should succeed");
@@ -424,7 +454,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         registry.registerChallenge(address(0x1234));
-        registry.lock();
+        registry.lock(address(0x1234));
 
         // Can't remove while locked
         uint256 res1 = registry.removeChallenge(address(0x1234));
@@ -446,9 +476,11 @@ contract BountyRegistryTest is Test {
 
     function test_withdrawAfterLockExpires() public {
         IBountyRegistry registry = deployRegistry(0);
+        address challenge = address(0x1234);
 
         vm.deal(address(registry), 5 ether);
-        registry.lock();
+        registry.registerChallenge(challenge);
+        registry.lock(challenge);
 
         // Can't withdraw while locked
         uint256 res1 = registry.withdraw();
@@ -461,6 +493,50 @@ contract BountyRegistryTest is Test {
         uint256 res2 = registry.withdraw();
         assertEq(res2, 0, "withdraw after lock expired should succeed");
         assertEq(admin.balance - balanceBefore, 5 ether, "should receive 5 ETH");
+    }
+
+    // =========================================================================
+    // Lock unregistered challenge
+    // =========================================================================
+
+    function test_lockUnregisteredChallenge() public {
+        IBountyRegistry registry = deployRegistry(0);
+
+        uint256 res = registry.lock(address(0x9999));
+        assertEq(res, ERR_INVALID_CLAIM, "lock unregistered challenge should fail");
+    }
+
+    // =========================================================================
+    // Multiple simultaneous locks
+    // =========================================================================
+
+    function test_multipleSimultaneousLocks() public {
+        IBountyRegistry registry = deployRegistry(0);
+        address game1 = deployDummyGame(true);
+        address game2 = deployDummyGame(true);
+
+        registry.registerChallenge(game1);
+        registry.registerChallenge(game2);
+
+        // Lock both
+        uint256 res1 = registry.lock(game1);
+        assertEq(res1, 0, "lock game1 should succeed");
+        uint256 res2 = registry.lock(game2);
+        assertEq(res2, 0, "lock game2 should succeed");
+
+        // Both locked
+        assertTrue(registry.isLocked(game1), "game1 should be locked");
+        assertTrue(registry.isLocked(game2), "game2 should be locked");
+
+        // Claim both
+        uint256 claim1 = registry.claim(game1);
+        assertEq(claim1, 0, "claim game1 should succeed");
+        uint256 claim2 = registry.claim(game2);
+        assertEq(claim2, 0, "claim game2 should succeed");
+
+        // Both closed
+        assertFalse(registry.isOpenChallenge(game1), "game1 should be closed");
+        assertFalse(registry.isOpenChallenge(game2), "game2 should be closed");
     }
 
     // Allow receiving ETH (for claim/withdraw transfers back to this contract)

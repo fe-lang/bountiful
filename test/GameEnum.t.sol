@@ -182,10 +182,14 @@ contract GameEnumTest is Test {
 
         setupAlmostSolvedBoard(game);
 
+        // Register the game as a challenge (required for locking)
+        registry.registerChallenge(address(game));
+
         uint256 res = game.moveField(15);
         assertEq(res, ERR_MISSING_LOCK, "move without registry lock should fail");
 
-        uint256 lockRes = registry.lock();
+        // Lock the challenge (per-challenge lock)
+        uint256 lockRes = registry.lock(address(game));
         assertEq(lockRes, 0, "lock should succeed");
 
         res = game.moveField(15);

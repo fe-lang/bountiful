@@ -122,7 +122,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
                 addr: store.lock_validator,
                 gas: 100000,
                 value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller() }
+                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() }
             )
             if lock_result != 0 {
                 return Error::MissingLock.to_int()
