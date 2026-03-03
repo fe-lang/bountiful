@@ -1,0 +1,320 @@
+/* ── C64 PALETTE ── */
+:root {
+  --c64-bg: #40318D;
+  --c64-border: #7869C4;
+  --c64-text: #7869C4;
+  --c64-white: #FFFFFF;
+  --c64-dark: #2B1E5C;
+  --font: 'Press Start 2P', monospace;
+}
+
+/* ── RESET ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── BASE ── */
+html {
+  font-size: 14px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--c64-border);
+  font-family: var(--font);
+  color: var(--c64-text);
+  line-height: 1.8;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px;
+}
+
+/* ── CRT BORDER / FRAME ── */
+.c64-border {
+  background: var(--c64-border);
+  border: 24px solid var(--c64-border);
+  border-radius: 4px;
+  max-width: 720px;
+  width: 100%;
+  box-shadow:
+    0 0 0 4px var(--c64-dark),
+    0 0 40px rgba(120, 105, 196, 0.3);
+}
+
+.c64-screen {
+  background: var(--c64-bg);
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scanline overlay */
+.c64-screen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── NAV ── */
+.c64-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--c64-border);
+}
+
+.c64-nav a {
+  color: var(--c64-text);
+  text-decoration: none;
+  font-size: 0.7rem;
+  transition: color 0.1s;
+}
+
+.c64-nav a:hover {
+  color: var(--c64-white);
+}
+
+/* ── HEADER ── */
+.c64-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.c64-header .stars {
+  color: var(--c64-white);
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.c64-header p {
+  font-size: 0.65rem;
+}
+
+/* Blinking cursor */
+.cursor {
+  animation: blink 1s step-end infinite;
+  color: var(--c64-text);
+  margin-left: 4px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── SECTIONS ── */
+.c64-section {
+  margin-bottom: 40px;
+}
+
+h2 {
+  color: var(--c64-white);
+  font-size: 0.8rem;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--c64-border);
+  padding-bottom: 8px;
+}
+
+h3 {
+  color: var(--c64-white);
+  font-size: 0.65rem;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+p {
+  font-size: 0.6rem;
+  margin-bottom: 12px;
+}
+
+a {
+  color: var(--c64-white);
+  text-decoration: underline;
+}
+
+a:hover {
+  color: var(--c64-text);
+}
+
+ol {
+  list-style: none;
+  counter-reset: steps;
+  padding-left: 0;
+}
+
+ol li {
+  font-size: 0.6rem;
+  margin-bottom: 6px;
+  counter-increment: steps;
+}
+
+ol li::before {
+  content: counter(steps) ". ";
+  color: var(--c64-white);
+}
+
+/* ── TABLE (Contracts / Source) ── */
+.c64-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.c64-table td {
+  font-size: 0.55rem;
+  padding: 6px 0;
+  vertical-align: top;
+}
+
+.c64-table tr {
+  border-bottom: 1px solid var(--c64-dark);
+}
+
+.c64-table td:first-child {
+  color: var(--c64-white);
+  white-space: nowrap;
+  padding-right: 20px;
+  width: 1%;
+}
+
+.c64-table td:last-child {
+  word-break: break-all;
+}
+
+/* ── PUZZLE ── */
+.puzzle-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.c64-btn {
+  font-family: var(--font);
+  font-size: 0.55rem;
+  color: var(--c64-bg);
+  background: var(--c64-text);
+  border: none;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.c64-btn:hover,
+.c64-btn:focus {
+  background: var(--c64-white);
+  color: var(--c64-bg);
+  outline: none;
+}
+
+.c64-btn.active {
+  background: var(--c64-white);
+  color: var(--c64-bg);
+}
+
+.puzzle-status {
+  display: flex;
+  gap: 24px;
+  font-size: 0.55rem;
+  margin-bottom: 16px;
+}
+
+.puzzle-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  max-width: 320px;
+  margin: 0 auto 16px;
+  aspect-ratio: 1;
+}
+
+.puzzle-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  color: var(--c64-bg);
+  background: var(--c64-text);
+  border: 2px solid var(--c64-dark);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.08s, background 0.08s;
+}
+
+.puzzle-tile:hover {
+  background: var(--c64-white);
+}
+
+.puzzle-tile.empty {
+  background: var(--c64-bg);
+  border-color: var(--c64-bg);
+  cursor: default;
+}
+
+.puzzle-message {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--c64-white);
+  min-height: 1.8em;
+}
+
+.puzzle-hint {
+  text-align: center;
+  font-size: 0.5rem;
+  opacity: 0.6;
+}
+
+/* ── FOOTER ── */
+.c64-footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 2px solid var(--c64-border);
+}
+
+.c64-footer p {
+  font-size: 0.6rem;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 540px) {
+  html {
+    font-size: 12px;
+  }
+
+  body {
+    padding: 8px;
+  }
+
+  .c64-border {
+    border-width: 12px;
+  }
+
+  .c64-screen {
+    padding: 16px;
+  }
+
+  .c64-nav {
+    gap: 6px 12px;
+  }
+
+  .puzzle-board {
+    max-width: 260px;
+  }
+}

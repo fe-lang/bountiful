@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{# ── NAV MENU ── #}
+<nav class="c64-nav">
+  <a href="#about">1. ABOUT</a>
+  <a href="#play">2. PLAY</a>
+  <a href="#contracts">3. CONTRACTS</a>
+  <a href="#source">4. SOURCE</a>
+</nav>
+
+{# ── HEADER ── #}
+<header class="c64-header">
+  <p class="stars">**** BOUNTIFUL V1 ****</p>
+  <p>FIND BUGS. CLAIM BOUNTIES.<span class="cursor">&#9608;</span></p>
+</header>
+
+{# ── ABOUT ── #}
+<section id="about" class="c64-section">
+  <h2>&gt; ABOUT</h2>
+  <p>
+    BOUNTIFUL IS A BUG BOUNTY PLATFORM FOR THE
+    <a href="https://github.com/ethereum/fe" target="_blank" rel="noopener">FE COMPILER</a>.
+  </p>
+  <p>
+    EACH CHALLENGE IS A 15-PUZZLE DEPLOYED ON-CHAIN
+    IN AN UNSOLVABLE STATE. IF YOU CAN SOLVE IT,
+    YOU HAVE FOUND A COMPILER BUG.
+  </p>
+  <h3>&gt; HOW TO PARTICIPATE</h3>
+  <ol>
+    <li>FIND A BUG IN THE FE COMPILER</li>
+    <li>LOCK A CHALLENGE ON-CHAIN</li>
+    <li>EXPLOIT THE BUG TO SOLVE THE PUZZLE</li>
+    <li>CLAIM YOUR BOUNTY</li>
+  </ol>
+</section>
+
+{# ── PLAY ── #}
+<section id="play" class="c64-section">
+  <h2>&gt; PLAY</h2>
+  <div class="puzzle-controls">
+    <button id="btn-random" class="c64-btn">[R] RANDOM BOARD</button>
+    <button id="btn-challenge" class="c64-btn">[C] CHALLENGE BOARD</button>
+  </div>
+  <div class="puzzle-status">
+    <span id="move-counter">MOVES: 0</span>
+    <span id="puzzle-mode">MODE: RANDOM</span>
+  </div>
+  <div id="puzzle-board" class="puzzle-board"></div>
+  <div id="puzzle-message" class="puzzle-message"></div>
+  <p class="puzzle-hint">CLICK A TILE OR USE ARROW KEYS</p>
+</section>
+
+{# ── CONTRACTS ── #}
+<section id="contracts" class="c64-section">
+  <h2>&gt; CONTRACTS</h2>
+  <table class="c64-table">
+    <tr><td>REGISTRY</td><td>0x1234...5678</td></tr>
+    <tr><td>GAME</td><td>0xABCD...EF01</td></tr>
+    <tr><td>GAME 2D</td><td>0x2345...6789</td></tr>
+    <tr><td>GAME ENUM</td><td>0x3456...7890</td></tr>
+    <tr><td>GAME BIT</td><td>0x4567...8901</td></tr>
+    <tr><td>NETWORK</td><td>ETHEREUM SEPOLIA</td></tr>
+  </table>
+</section>
+
+{# ── SOURCE ── #}
+<section id="source" class="c64-section">
+  <h2>&gt; SOURCE</h2>
+  <table class="c64-table">
+    <tr>
+      <td>REPOSITORY</td>
+      <td><a href="https://github.com/cburgdorf/bountiful" target="_blank" rel="noopener">GITHUB.COM/CBURGDORF/BOUNTIFUL</a></td>
+    </tr>
+    <tr>
+      <td>FE LANG</td>
+      <td><a href="https://fe-lang.org" target="_blank" rel="noopener">FE-LANG.ORG</a></td>
+    </tr>
+  </table>
+</section>
+
+<footer class="c64-footer">
+  <p>READY.<span class="cursor">&#9608;</span></p>
+</footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ get_url(path='js/puzzle.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ config.title }}</title>
+  <meta name="description" content="{{ config.description }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ get_url(path='css/c64.css') }}">
+</head>
+<body>
+  <div class="c64-border">
+    <div class="c64-screen">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
