@@ -2,7 +2,7 @@
 :root {
   --c64-bg: #40318D;
   --c64-border: #7869C4;
-  --c64-text: #7869C4;
+  --c64-text: #C8BFE7;
   --c64-white: #FFFFFF;
   --c64-dark: #2B1E5C;
   --font: 'Press Start 2P', monospace;
@@ -18,7 +18,6 @@
 /* ── BASE ── */
 html {
   font-size: 14px;
-  scroll-behavior: smooth;
 }
 
 body {
@@ -26,30 +25,27 @@ body {
   font-family: var(--font);
   color: var(--c64-text);
   line-height: 1.8;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 24px;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── CRT BORDER / FRAME ── */
 .c64-border {
   background: var(--c64-border);
-  border: 24px solid var(--c64-border);
-  border-radius: 4px;
-  max-width: 720px;
-  width: 100%;
-  box-shadow:
-    0 0 0 4px var(--c64-dark),
-    0 0 40px rgba(120, 105, 196, 0.3);
+  border: 16px solid var(--c64-border);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .c64-screen {
   background: var(--c64-bg);
-  padding: 32px;
+  padding: 16px;
   position: relative;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Scanline overlay */
@@ -70,37 +66,17 @@ body {
   pointer-events: none;
 }
 
-/* ── NAV ── */
-.c64-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  margin-bottom: 32px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--c64-border);
-}
-
-.c64-nav a {
-  color: var(--c64-text);
-  text-decoration: none;
-  font-size: 0.7rem;
-  transition: color 0.1s;
-}
-
-.c64-nav a:hover {
-  color: var(--c64-white);
-}
-
 /* ── HEADER ── */
 .c64-header {
   text-align: center;
-  margin-bottom: 40px;
+  padding: 8px 0;
+  flex-shrink: 0;
 }
 
 .c64-header .stars {
   color: var(--c64-white);
   font-size: 1rem;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .c64-header p {
@@ -119,29 +95,42 @@ body {
   50% { opacity: 0; }
 }
 
-/* ── SECTIONS ── */
-.c64-section {
-  margin-bottom: 40px;
+/* ── GRID LAYOUT ── */
+.c64-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
+/* ── QUADRANTS ── */
+.c64-quadrant {
+  border: 2px solid var(--c64-border);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ── TYPOGRAPHY ── */
 h2 {
   color: var(--c64-white);
   font-size: 0.8rem;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--c64-border);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 h3 {
   color: var(--c64-white);
   font-size: 0.65rem;
-  margin-top: 20px;
-  margin-bottom: 12px;
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
 
 p {
   font-size: 0.6rem;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 a {
@@ -201,7 +190,7 @@ ol li::before {
 .puzzle-controls {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
@@ -232,15 +221,15 @@ ol li::before {
   display: flex;
   gap: 24px;
   font-size: 0.55rem;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .puzzle-board {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  max-width: 320px;
-  margin: 0 auto 16px;
+  max-width: 280px;
+  margin: 0 auto 12px;
   aspect-ratio: 1;
 }
 
@@ -281,37 +270,33 @@ ol li::before {
   opacity: 0.6;
 }
 
-/* ── FOOTER ── */
-.c64-footer {
-  margin-top: 40px;
-  padding-top: 16px;
-  border-top: 2px solid var(--c64-border);
-}
-
-.c64-footer p {
-  font-size: 0.6rem;
-}
-
-/* ── RESPONSIVE ── */
-@media (max-width: 540px) {
-  html {
-    font-size: 12px;
-  }
-
+/* ── RESPONSIVE: single column on small screens ── */
+@media (max-width: 768px) {
   body {
-    padding: 8px;
+    height: auto;
+    overflow: auto;
   }
 
   .c64-border {
-    border-width: 12px;
+    height: auto;
+    border-width: 8px;
   }
 
   .c64-screen {
-    padding: 16px;
+    padding: 12px;
   }
 
-  .c64-nav {
-    gap: 6px 12px;
+  .c64-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .c64-quadrant {
+    overflow-y: visible;
+  }
+
+  html {
+    font-size: 12px;
   }
 
   .puzzle-board {
