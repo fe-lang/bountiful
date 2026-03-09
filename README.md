@@ -97,3 +97,5 @@ The admin can register new challenge contracts or remove existing ones (when unl
 ## Documentation
 
 - **[Bounty Hunting Guide](doc/bounty-hunting-guide.md)** — Step-by-step walkthrough for finding exploits and claiming prizes
+- **[AGENTS.md](AGENTS.md)** — Structured reference for AI agents hunting bounties
+- 
