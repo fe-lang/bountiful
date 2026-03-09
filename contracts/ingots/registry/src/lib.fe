@@ -7,6 +7,7 @@ use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
 use std::evm::ops
 use shared::{
     Error,
+    Challenge,
     LOCK_PERIOD,
     SolvableMsg,
 }
@@ -17,8 +18,8 @@ pub msg RegistryMsg {
     Lock { challenge: Address } -> u256,
     #[selector = sol("isLocked(address)")]
     IsLocked { challenge: Address } -> bool,
-    #[selector = sol("registerChallenge(address)")]
-    RegisterChallenge { challenge: Address } -> u256,
+    #[selector = sol("registerChallenge(address,uint128)")]
+    RegisterChallenge { challenge: Address, prize_amount: u128 } -> u256,
     #[selector = sol("removeChallenge(address)")]
     RemoveChallenge { challenge: Address } -> u256,
     #[selector = sol("isOpenChallenge(address)")]
@@ -39,7 +40,7 @@ struct RegistryStore {
     latest_lock_expiry: u256,
     admin: Address,
     lock_deposit: u256,
-    open_challenges: StorageMap<Address, bool>,
+    challenges: StorageMap<Address, Challenge>,
 }
 
 pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
@@ -53,7 +54,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
     recv RegistryMsg {
         Lock { challenge } -> u256 uses (mut store, ctx) {
-            if !store.open_challenges.get(key: challenge) {
+            if !store.challenges.get(key: challenge).is_open {
                 return Error::InvalidClaim.to_int()
             }
             if store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number() {
@@ -75,11 +76,11 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number()
         }
 
-        RegisterChallenge { challenge } -> u256 uses (mut store, ctx) {
+        RegisterChallenge { challenge, prize_amount } -> u256 uses (mut store, ctx) {
             if ctx.caller() != store.admin {
                 return Error::OnlyAdmin.to_int()
             }
-            store.open_challenges.set(key: challenge, value: true)
+            store.challenges.set(key: challenge, value: Challenge::new(is_open: true, prize_amount))
             return 0
         }
 
@@ -90,12 +91,12 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number() {
                 return Error::AlreadyLocked.to_int()
             }
-            store.open_challenges.set(key: challenge, value: false)
+            store.challenges.set(key: challenge, value: Challenge::closed())
             return 0
         }
 
         IsOpenChallenge { challenge } -> bool uses (store) {
-            store.open_challenges.get(key: challenge)
+            store.challenges.get(key: challenge).is_open
         }
 
         Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
@@ -105,7 +106,8 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if store.lock_valid_until_blocks.get(key: challenge) <= ctx.block_number() {
                 return Error::MissingLock.to_int()
             }
-            if !store.open_challenges.get(key: challenge) {
+            let c = store.challenges.get(key: challenge)
+            if !c.is_open {
                 return Error::InvalidClaim.to_int()
             }
             // Cross-contract call to check if puzzle is solved
@@ -118,9 +120,9 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if !solved {
                 return Error::InvalidClaim.to_int()
             }
-            // Send entire contract balance to claimer
-            ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
-            store.open_challenges.set(key: challenge, value: false)
+            // Send the challenge's prize amount to the claimer
+            ops::call(100000, ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
+            store.challenges.set(key: challenge, value: Challenge::closed())
             return 0
         }
 
@@ -162,7 +164,7 @@ fn test_registry_lock() uses (evm: mut Evm) {
     let challenge = Address { inner: 12345 }
 
     // Register challenge first (required for locking)
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 })
 
     // Initially not locked
     let locked: bool = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::IsLocked { challenge })
@@ -188,7 +190,7 @@ fn test_registry_non_admin_register() uses (evm: mut Evm) {
 
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 }, prize_amount: 0 }
     )
     assert(res == Error::OnlyAdmin.to_int())
 }
@@ -208,7 +210,7 @@ fn test_registry_admin_register_and_check() uses (evm: mut Evm) {
     // Register as admin
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 }, prize_amount: 0 }
     )
     assert(res == 0)
 
@@ -228,7 +230,7 @@ fn test_registry_remove_challenge_unlocked() uses (evm: mut Evm) {
     // Register
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 }, prize_amount: 0 }
     )
     assert(res == 0)
 
@@ -261,7 +263,7 @@ fn test_registry_remove_challenge_while_locked() uses (evm: mut Evm) {
     // Register challenge
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 } }
+        message: RegistryMsg::RegisterChallenge { challenge: Address { inner: 12345 }, prize_amount: 0 }
     )
     assert(res == 0)
 
@@ -294,7 +296,7 @@ fn test_registry_claim_without_lock() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: game }
+        message: RegistryMsg::RegisterChallenge { challenge: game, prize_amount: 0 }
     )
     assert(res == 0)
 
@@ -333,7 +335,7 @@ fn test_registry_claim_unsolved() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: game }
+        message: RegistryMsg::RegisterChallenge { challenge: game, prize_amount: 0 }
     )
     assert(res == 0)
 
@@ -359,7 +361,7 @@ fn test_full_bounty_flow() uses (evm: mut Evm) {
     // Register challenge (as admin)
     let reg_res: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: game }
+        message: RegistryMsg::RegisterChallenge { challenge: game, prize_amount: 0 }
     )
     assert(reg_res == 0)
 
@@ -397,7 +399,7 @@ fn test_registry_lock_requires_deposit() uses (evm: mut Evm) {
     let challenge = Address { inner: 12345 }
 
     // Register challenge first
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 })
 
     // Try to lock with value: 0 — should fail (deposit required)
     let res: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge })
@@ -421,7 +423,7 @@ fn test_registry_withdraw_while_locked() uses (evm: mut Evm) {
     let challenge = Address { inner: 12345 }
 
     // Register and lock a challenge
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 })
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge })
 
     // Try to withdraw while locked — should fail
@@ -455,7 +457,7 @@ fn test_registry_validate_owns_lock_correct_owner() uses (evm: mut Evm) {
     let challenge = Address { inner: 12345 }
 
     // Register and lock
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 })
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge })
 
     // ValidateOwnsLock with the correct owner (our address) and challenge
@@ -473,7 +475,7 @@ fn test_registry_validate_owns_lock_wrong_owner() uses (evm: mut Evm) {
     let challenge = Address { inner: 12345 }
 
     // Register and lock (locks for our address)
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 })
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge })
 
     // ValidateOwnsLock with a different address — should fail
@@ -528,14 +530,14 @@ fn test_registry_double_register() uses (evm: mut Evm) {
     // Register once
     let res1: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge }
+        message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 }
     )
     assert(res1 == 0)
 
     // Register same challenge again — should succeed (idempotent)
     let res2: u256 = evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge }
+        message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 }
     )
     assert(res2 == 0)
 
@@ -558,7 +560,7 @@ fn test_registry_claim_already_claimed() uses (evm: mut Evm) {
     // Register, lock, claim
     evm.call(
         addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::RegisterChallenge { challenge: game }
+        message: RegistryMsg::RegisterChallenge { challenge: game, prize_amount: 0 }
     )
     evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge: game })
     let claim_res: u256 = evm.call(
@@ -610,8 +612,8 @@ fn test_registry_multiple_simultaneous_locks() uses (evm: mut Evm) {
     let game2 = evm.create2<DummyGame>(value: 0, args: (true,), salt: 91)
 
     // Register both
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge: game1 })
-    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge: game2 })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge: game1, prize_amount: 0 })
+    evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::RegisterChallenge { challenge: game2, prize_amount: 0 })
 
     // Lock both simultaneously
     let res1: u256 = evm.call(addr: registry, gas: 100000, value: 0, message: RegistryMsg::Lock { challenge: game1 })

@@ -7,6 +7,7 @@
 
 use std::abi::sol
 use std::evm::{Address, Evm, assert}
+use std::evm::word::WordRepr
 
 // =============================================================================
 // Error enum
@@ -38,6 +39,40 @@ impl Error {
     }
 }
 
+// =============================================================================
+// Challenge struct — packed into a single u256 for StorageMap compatibility
+//
+// Layout: [128 bits prize_amount | ... unused ... | 1 bit is_open]
+// =============================================================================
+
+pub struct Challenge {
+    pub is_open: bool,
+    pub prize_amount: u128,
+}
+
+impl Challenge {
+    pub fn new(is_open: bool, prize_amount: u128) -> Self {
+        Challenge { is_open, prize_amount }
+    }
+
+    pub fn closed() -> Self {
+        Challenge { is_open: false, prize_amount: 0 }
+    }
+}
+
+impl WordRepr for Challenge {
+    fn from_word(word: u256) -> Self {
+        let is_open: bool = (word & 1) != 0
+        let prize_amount: u128 = ((word >> 128) as u128)
+        Challenge { is_open, prize_amount }
+    }
+
+    fn to_word(own self) -> u256 {
+        let open_bit: u256 = if self.is_open { 1 } else { 0 }
+        let prize_bits: u256 = (self.prize_amount as u256) << 128
+        prize_bits | open_bit
+    }
+}
 
 // =============================================================================
 // Game constants
@@ -90,4 +125,40 @@ fn test_winning_value() uses (evm: mut Evm) {
     assert(winning_value(14) == 15)
     // Cell 15 is the empty cell (value 0)
     assert(winning_value(15) == 0)
+}
+
+#[test]
+fn test_challenge_word_repr_roundtrip() uses (evm: mut Evm) {
+    let c = Challenge::new(is_open: true, prize_amount: 1000)
+    let word = c.to_word()
+    let c2 = Challenge::from_word(word)
+    assert(c2.is_open)
+    assert(c2.prize_amount == 1000)
+}
+
+#[test]
+fn test_challenge_word_repr_closed() uses (evm: mut Evm) {
+    let c = Challenge::new(is_open: false, prize_amount: 0)
+    let word = c.to_word()
+    let c2 = Challenge::from_word(word)
+    assert(!c2.is_open)
+    assert(c2.prize_amount == 0)
+}
+
+#[test]
+fn test_challenge_word_repr_large_prize() uses (evm: mut Evm) {
+    // 10 ETH in wei = 10_000_000_000_000_000_000
+    let prize: u128 = 10000000000000000000
+    let c = Challenge::new(is_open: true, prize_amount: prize)
+    let word = c.to_word()
+    let c2 = Challenge::from_word(word)
+    assert(c2.is_open)
+    assert(c2.prize_amount == prize)
+}
+
+#[test]
+fn test_challenge_closed_helper() uses (evm: mut Evm) {
+    let c = Challenge::closed()
+    assert(!c.is_open)
+    assert(c.prize_amount == 0)
 }

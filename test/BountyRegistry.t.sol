@@ -46,7 +46,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         uint256 res = registry.lock(challenge);
         assertEq(res, 0, "lock should succeed");
@@ -68,7 +68,7 @@ contract BountyRegistryTest is Test {
         vm.deal(admin, 1 ether);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         uint256 res = registry.lock{value: 0.1 ether}(challenge);
         assertEq(res, 0, "lock with sufficient deposit should succeed");
@@ -80,7 +80,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0.1 ether);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         uint256 res = registry.lock{value: 0}(challenge);
         assertEq(res, ERR_INVALID_DEPOSIT, "lock without deposit should fail");
@@ -94,7 +94,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         vm.prank(attacker);
-        uint256 res = registry.registerChallenge(address(0x1234));
+        uint256 res = registry.registerChallenge(address(0x1234), 0);
         assertEq(res, ERR_ONLY_ADMIN, "non-admin register should fail");
     }
 
@@ -102,7 +102,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         // Register first as admin
-        registry.registerChallenge(address(0x1234));
+        registry.registerChallenge(address(0x1234), 0);
 
         vm.prank(attacker);
         uint256 res = registry.removeChallenge(address(0x1234));
@@ -116,7 +116,7 @@ contract BountyRegistryTest is Test {
         assertFalse(registry.isOpenChallenge(address(0x1234)), "not open initially");
 
         // Register
-        uint256 res = registry.registerChallenge(address(0x1234));
+        uint256 res = registry.registerChallenge(address(0x1234), 0);
         assertEq(res, 0, "register should succeed");
 
         assertTrue(registry.isOpenChallenge(address(0x1234)), "should be open after register");
@@ -135,7 +135,7 @@ contract BountyRegistryTest is Test {
     function test_removeBlockedWhileLocked() public {
         IBountyRegistry registry = deployRegistry(0);
 
-        registry.registerChallenge(address(0x1234));
+        registry.registerChallenge(address(0x1234), 0);
         registry.lock(address(0x1234));
 
         uint256 res = registry.removeChallenge(address(0x1234));
@@ -150,7 +150,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address game = deployDummyGame(true); // solved
 
-        registry.registerChallenge(game);
+        registry.registerChallenge(game, 0);
 
         // Claim without locking
         uint256 res = registry.claim(game);
@@ -161,7 +161,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address game = deployDummyGame(false); // NOT solved
 
-        registry.registerChallenge(game);
+        registry.registerChallenge(game, 0);
         registry.lock(game);
 
         uint256 res = registry.claim(game);
@@ -175,8 +175,8 @@ contract BountyRegistryTest is Test {
         // Fund the registry with 10 ETH
         vm.deal(address(registry), 10 ether);
 
-        // Register challenge
-        registry.registerChallenge(game);
+        // Register challenge with 3 ETH prize
+        registry.registerChallenge(game, uint128(3 ether));
 
         // Lock
         uint256 lockRes = registry.lock(game);
@@ -188,9 +188,12 @@ contract BountyRegistryTest is Test {
         uint256 claimRes = registry.claim(game);
         assertEq(claimRes, 0, "claim should succeed");
 
-        // Admin should have received the ETH
+        // Admin should have received only the prize amount (3 ETH), not the full balance
         uint256 balanceAfter = admin.balance;
-        assertEq(balanceAfter - balanceBefore, 10 ether, "should receive 10 ETH");
+        assertEq(balanceAfter - balanceBefore, 3 ether, "should receive 3 ETH prize");
+
+        // Registry should still have the remaining 7 ETH
+        assertEq(registry.getBalance(), 7 ether, "registry keeps remaining balance");
 
         // Challenge should be closed
         assertFalse(registry.isOpenChallenge(game), "challenge closed after claim");
@@ -219,7 +222,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
         registry.lock(challenge);
 
         uint256 res = registry.withdraw();
@@ -257,7 +260,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address game = deployDummyGame(true); // solved
 
-        registry.registerChallenge(game);
+        registry.registerChallenge(game, 0);
         registry.lock(game);
 
         // Advance past LOCK_PERIOD so lock expires
@@ -275,7 +278,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         // First lock
         uint256 res1 = registry.lock(challenge);
@@ -300,7 +303,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address game = deployDummyGame(true); // solved
 
-        registry.registerChallenge(game);
+        registry.registerChallenge(game, 0);
 
         // Admin (this contract) locks the challenge
         registry.lock(game);
@@ -319,7 +322,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
         registry.lock(challenge);
 
         uint256 res = registry.validateOwnsLock(address(this), challenge);
@@ -330,7 +333,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
         registry.lock(challenge);
 
         uint256 res = registry.validateOwnsLock(attacker, challenge);
@@ -341,7 +344,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
         registry.lock(challenge);
 
         // Advance past LOCK_PERIOD
@@ -369,7 +372,7 @@ contract BountyRegistryTest is Test {
         vm.deal(admin, 1 ether);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         // Less than required
         uint256 res = registry.lock{value: 0.05 ether}(challenge);
@@ -381,7 +384,7 @@ contract BountyRegistryTest is Test {
         vm.deal(admin, 1 ether);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         uint256 res = registry.lock{value: 0.1 ether}(challenge);
         assertEq(res, 0, "exact deposit should succeed");
@@ -393,7 +396,7 @@ contract BountyRegistryTest is Test {
         vm.deal(admin, 1 ether);
         address challenge = address(0x1234);
 
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
 
         uint256 res = registry.lock{value: 0.5 ether}(challenge);
         assertEq(res, 0, "excess deposit should succeed");
@@ -407,10 +410,10 @@ contract BountyRegistryTest is Test {
     function test_doubleRegisterSameChallenge() public {
         IBountyRegistry registry = deployRegistry(0);
 
-        uint256 res1 = registry.registerChallenge(address(0x1234));
+        uint256 res1 = registry.registerChallenge(address(0x1234), 0);
         assertEq(res1, 0, "first register should succeed");
 
-        uint256 res2 = registry.registerChallenge(address(0x1234));
+        uint256 res2 = registry.registerChallenge(address(0x1234), 0);
         assertEq(res2, 0, "second register should succeed (idempotent)");
 
         assertTrue(registry.isOpenChallenge(address(0x1234)), "should still be open");
@@ -420,7 +423,7 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
         address game = deployDummyGame(true); // solved
 
-        registry.registerChallenge(game);
+        registry.registerChallenge(game, 0);
         registry.lock(game);
 
         uint256 res1 = registry.claim(game);
@@ -453,7 +456,7 @@ contract BountyRegistryTest is Test {
     function test_removeAfterLockExpires() public {
         IBountyRegistry registry = deployRegistry(0);
 
-        registry.registerChallenge(address(0x1234));
+        registry.registerChallenge(address(0x1234), 0);
         registry.lock(address(0x1234));
 
         // Can't remove while locked
@@ -479,7 +482,7 @@ contract BountyRegistryTest is Test {
         address challenge = address(0x1234);
 
         vm.deal(address(registry), 5 ether);
-        registry.registerChallenge(challenge);
+        registry.registerChallenge(challenge, 0);
         registry.lock(challenge);
 
         // Can't withdraw while locked
@@ -515,8 +518,8 @@ contract BountyRegistryTest is Test {
         address game1 = deployDummyGame(true);
         address game2 = deployDummyGame(true);
 
-        registry.registerChallenge(game1);
-        registry.registerChallenge(game2);
+        registry.registerChallenge(game1, 0);
+        registry.registerChallenge(game2, 0);
 
         // Lock both
         uint256 res1 = registry.lock(game1);

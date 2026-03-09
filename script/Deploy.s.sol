@@ -37,10 +37,11 @@ contract Deploy is Script {
         IGame game = IGame(gameAddr);
         console.log("Game:", gameAddr);
 
-        // 3. Register the game as a challenge
-        uint256 res = registry.registerChallenge(gameAddr);
+        // 3. Register the game as a challenge with prize amount
+        uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(1 ether)));
+        uint256 res = registry.registerChallenge(gameAddr, prizeAmount);
         require(res == 0, "registerChallenge failed");
-        console.log("Game registered as challenge");
+        console.log("Game registered with prize:", prizeAmount);
 
         // 4. Initialize the board: [1,2,...,14,0,15] — almost solved, one move away
         for (uint256 i = 0; i < 14; i++) {

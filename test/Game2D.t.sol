@@ -197,7 +197,7 @@ contract Game2DTest is Test {
         setupAlmostSolvedBoard(game);
 
         // Register the game as a challenge (required for locking)
-        registry.registerChallenge(address(game));
+        registry.registerChallenge(address(game), 0);
 
         // Without locking, move should fail
         uint256 res = game.moveField(3, 3);
