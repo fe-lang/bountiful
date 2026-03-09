@@ -93,3 +93,7 @@ When a challenge is not locked, the admin can withdraw funds. This is used to mi
 ### Register / remove challenges
 
 The admin can register new challenge contracts or remove existing ones (when unlocked) through the `BountyRegistry` contract.
+
+## Documentation
+
+- **[Bounty Hunting Guide](doc/bounty-hunting-guide.md)** — Step-by-step walkthrough for finding exploits and claiming prizes
