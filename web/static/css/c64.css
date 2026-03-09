@@ -186,6 +186,39 @@ ol li::before {
   word-break: break-all;
 }
 
+.contract-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contract-value {
+  min-width: 0;
+}
+
+.copy-contract-btn {
+  font-family: var(--font);
+  font-size: 0.45rem;
+  line-height: 1;
+  color: var(--c64-bg);
+  background: var(--c64-text);
+  border: 1px solid var(--c64-dark);
+  padding: 5px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copy-contract-btn:hover,
+.copy-contract-btn:focus {
+  background: var(--c64-white);
+  outline: none;
+}
+
+.copy-contract-btn.copied {
+  background: var(--c64-white);
+}
+
 /* ── PUZZLE ── */
 .puzzle-controls {
   display: flex;

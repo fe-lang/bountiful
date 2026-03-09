@@ -50,11 +50,51 @@
   <section id="contracts" class="c64-quadrant">
     <h2>&gt; CONTRACTS</h2>
     <table class="c64-table">
-      <tr><td>REGISTRY</td><td>0x1234...5678</td></tr>
-      <tr><td>GAME</td><td>0xABCD...EF01</td></tr>
-      <tr><td>GAME 2D</td><td>0x2345...6789</td></tr>
-      <tr><td>GAME ENUM</td><td>0x3456...7890</td></tr>
-      <tr><td>GAME BIT</td><td>0x4567...8901</td></tr>
+      <tr>
+        <td>REGISTRY</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">0x1234...5678</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x1234...5678" aria-label="Copy registry contract address">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>GAME</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">0xABCD...EF01</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="0xABCD...EF01" aria-label="Copy game contract address">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>GAME 2D</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">0x2345...6789</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x2345...6789" aria-label="Copy game 2d contract address">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>GAME ENUM</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">0x3456...7890</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x3456...7890" aria-label="Copy game enum contract address">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>GAME BIT</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">0x4567...8901</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x4567...8901" aria-label="Copy game bit contract address">COPY</button>
+          </div>
+        </td>
+      </tr>
       <tr><td>NETWORK</td><td>ETHEREUM SEPOLIA</td></tr>
     </table>
   </section>
@@ -80,4 +120,44 @@
 
 {% block scripts %}
 <script src="{{ get_url(path='js/puzzle.js') }}"></script>
+<script>
+  const fallbackCopyText = (value) => {
+    const input = document.createElement('input');
+    input.value = value;
+    input.setAttribute('readonly', '');
+    input.style.position = 'absolute';
+    input.style.left = '-9999px';
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+  };
+
+  document.querySelectorAll('.copy-contract-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const value = button.dataset.copyValue;
+      if (!value) return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          fallbackCopyText(value);
+        }
+
+        button.textContent = 'COPIED';
+        button.classList.add('copied');
+        window.setTimeout(() => {
+          button.textContent = 'COPY';
+          button.classList.remove('copied');
+        }, 1200);
+      } catch (_error) {
+        button.textContent = 'FAILED';
+        window.setTimeout(() => {
+          button.textContent = 'COPY';
+        }, 1200);
+      }
+    });
+  });
+</script>
 {% endblock %}

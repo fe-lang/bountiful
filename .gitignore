@@ -4,3 +4,4 @@
 contracts/out
 forge-out
 cache
+web/public
