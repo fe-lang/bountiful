@@ -19,7 +19,7 @@ All game contracts implement the `ISolvable` interface (`isSolved() -> bool`).
 
 - **Contracts**: [Fe 26.0.0-alpha.8](https://fe-lang.org/) (primary) + Solidity (interfaces, deployment, tests)
 - **Build & test**: [Foundry](https://book.getfoundry.sh/) (forge)
-- **Network**: Sepolia testnet
+- **Network**: Ethereum mainnet
 - **Website**: [Zola](https://www.getzola.org/) static site generator
 
 ## Project structure
@@ -55,13 +55,13 @@ forge build
 forge test
 ```
 
-### Deploy (Sepolia)
+### Deploy (Mainnet)
 
 ```bash
 export DEPLOYER_PRIVATE_KEY=0x...
-export SEPOLIA_RPC_URL=https://...
+export MAINNET_RPC_URL=https://...
 export LOCK_DEPOSIT=10000000000000000  # optional, defaults to 0.01 ETH
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+forge script script/Deploy.s.sol --rpc-url $MAINNET_RPC_URL --broadcast
 ```
 
 ### Run the website locally
