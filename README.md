@@ -1,51 +1,95 @@
-# bountiful
+# Bountiful
 
-This is work in progress code for an upcoming bug bounty challenge for Fe. It uses an early version of the Fe support for [hardhat](https://hardhat.org/) provided by the [`hardhat-fe`](https://www.npmjs.com/package/@developerdao/hardhat-fe) plugin. It also requires Fe version `0.17.0` to be build.
+Bountiful is an on-chain bug bounty platform for the [Fe programming language](https://fe-lang.org/). It deploys Fe smart contracts that should uphold certain invariants. If a bounty hunter can break those invariants — by exploiting a bug in the Fe compiler or the contract logic — they can claim ETH prize money permissionlessly, directly from the contract.
 
-## Find bugs, get ETH
+## Current challenges
 
-Bountiful is a registry for contracts that should uphold certain conditions. If the contract can be brought into a state where such condition no longer holds it means that either a bug in the Fe language or in the contract was found and exploited. In that case, the exploiter can claim prize money in ETH without having to obtain any further permission.
+Four different implementations of the [15 puzzle game](https://15puzzle.netlify.app/), each initialized to an unsolvable board state. Each variant exercises different Fe language features:
 
-## Current challenges:
+| Contract | Fe features exercised |
+|---|---|
+| **Game** | `StorageMap<u256, u256>`, encoding utilities |
+| **Game2D** | 2D nested arrays (`[[u256; 4]; 4]`), coordinate math |
+| **GameEnum** | Enums, `match` expressions, structs with `impl` methods |
+| **GameBitboard** | Bitwise operations, single-slot `u256` bitpacking |
 
-- Different implementations of the [15 puzzle game](https://15puzzle.netlify.app/) which start from an unsolvable game state
+All game contracts implement the `ISolvable` interface (`isSolved() -> bool`).
 
+## Tech stack
 
-## Mainnet deployment
+- **Contracts**: [Fe 26.0.0-alpha.8](https://fe-lang.org/) (primary) + Solidity (interfaces, deployment, tests)
+- **Build & test**: [Foundry](https://book.getfoundry.sh/) (forge)
+- **Network**: Sepolia testnet
+- **Website**: [Zola](https://www.getzola.org/) static site generator
 
-1. `npx hardhat deploy --network mainnet`
-2. After the deployment went through, send the prize money to the registry contract manually.
+## Project structure
 
-## How to run the tests
+```
+contracts/           Fe workspace (3 ingots)
+  ingots/registry/   BountyRegistry contract
+  ingots/games/      Four 15-puzzle implementations
+  ingots/shared/     Shared types, errors, constants
+src/                 Solidity interfaces + FeDeployer helper
+test/                Foundry test suite
+script/              Foundry deployment script
+web/                 Zola-based website with interactive puzzle
+```
 
-1. Run `git clone https://github.com/cburgdorf/bountiful.git`
-2. Run `npx hardhat test`
+## Getting started
 
-## Administrative money withdrawal
+```bash
+git clone https://github.com/cburgdorf/bountiful.git
+cd bountiful
+```
 
-Unless the system is in `locked` state, the admin can withdraw the prize money at any time. This would be used to migrate
-to a newer version of the system.
+### Build
 
-Run: `npx hardhat withdraw <address-of-registry>--network mainnet`
+```bash
+cd contracts && fe build && cd ..
+forge build
+```
 
+### Test
 
-## Claiming process
+```bash
+forge test
+```
 
-[Ethereum is a dark forest](https://www.paradigm.xyz/2020/08/ethereum-is-a-dark-forest) which is why we need a front running prevention mechanism. In short, if it is possible to send a transaction that will make the sender richer (in our case by exploiting a Fe bug and claiming ETH prize money) we can be sure that somewhere there's a bot noticing it who will perform the same transaction faster leaving the honest claimer empty handed.
+### Deploy (Sepolia)
 
-To avoid this we've come up with a very simple front-running prevention mechanism. Here is how it works:
+```bash
+export DEPLOYER_PRIVATE_KEY=0x...
+export SEPOLIA_RPC_URL=https://...
+export LOCK_DEPOSIT=10000000000000000  # optional, defaults to 0.01 ETH
+forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+```
 
-1. As a bounty hunter we first try to find an exploit by attacking the contracts locally on our own development machine
+### Run the website locally
 
-2. Let's suppose we have found a way to bring the code challenge into its `solved` state on our own local machine
+```bash
+cd web && zola serve
+```
 
-3. To replicate our success on the actual bug bounty registry and claim the prize we first have to aquire an exclusive lock via `registry.lock()`
+## How the bounty works
 
-4. Now that we have acquired an exclusive lock we have a window of `1000` blocks (roughly 3 hours) to bring *any* of the challenges into the *solved* state. Cautious as we are we will wait a few more blocks before we present the solution.
+[Ethereum is a dark forest](https://www.paradigm.xyz/2020/08/ethereum-is-a-dark-forest) — any profitable transaction can be front-run by MEV bots. Bountiful uses a per-challenge locking mechanism to prevent this:
 
-5. Now it's time to solve one of the challenges, which means we exploit the contract in the same way that we have successfully done before on our local development machine. It is important to point out that no other party can interfere with any of the code challenges because we have obtained an exclusive lock.
+1. **Find an exploit locally** — attack the contracts on your own machine first.
+2. **Acquire a lock** — call `registry.lock(challengeAddress)` and pay the lock deposit. This gives you exclusive access to that challenge for 100 blocks.
+3. **Wait a few blocks** — let your lock settle to be safe.
+4. **Solve the challenge** — replay your exploit on-chain. No one else can interact with the locked challenge.
+5. **Claim the prize** — call `registry.claim(challengeAddress)`. The registry verifies the challenge is solved and transfers the prize money.
 
-6. Next we call `registry.claim(address_of_challenge)` to claim the prize money.
+## Administrative operations
 
-7. Profit! 💸
+### Withdraw funds
 
+When a challenge is not locked, the admin can withdraw funds. This is used to migrate to newer versions of the system.
+
+```bash
+# Via the registry contract's withdraw() function
+```
+
+### Register / remove challenges
+
+The admin can register new challenge contracts or remove existing ones (when unlocked) through the `BountyRegistry` contract.
