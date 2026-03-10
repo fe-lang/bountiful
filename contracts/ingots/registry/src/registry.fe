@@ -35,12 +35,16 @@ pub msg RegistryMsg {
     GetBalance -> u256,
 }
 
+/// Manages time-locked claims on challenges.
+/// Each lock maps a challenge address to a `Lock` (claimer + expiry block).
 struct LockStore {
     locks: StorageMap<Address, Lock>,
     latest_lock_expiry: u256,
 }
 
 impl LockStore {
+    /// Attempts to acquire a lock on a challenge for the given claimer.
+    /// Fails with `AlreadyLocked` if an active lock already exists.
     pub fn acquire(mut self, challenge: Address, claimer: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         let existing = self.locks.get(key: challenge)
         if existing.valid_until_block > ctx.block_number() {
@@ -54,20 +58,25 @@ impl LockStore {
         return Ok(())
     }
 
+    /// Returns true if `owner` holds an active lock on the given challenge.
     pub fn owns_lock(self, challenge: Address, owner: Address) -> bool uses (ctx: Ctx) {
         let lock = self.locks.get(key: challenge)
         lock.claimer == owner && lock.valid_until_block > ctx.block_number()
     }
 
+    /// Returns true if the challenge has any active lock (regardless of owner).
     pub fn is_locked(self, challenge: Address) -> bool uses (ctx: Ctx) {
         self.locks.get(key: challenge).valid_until_block > ctx.block_number()
     }
 
+    /// Returns true if any lock across all challenges is still active.
+    /// Used to prevent admin withdrawal while locks are outstanding.
     pub fn is_any_active(self) -> bool uses (ctx: Ctx) {
         self.latest_lock_expiry > ctx.block_number()
     }
 }
 
+/// Top-level registry storage: admin config, challenges, and lock management.
 struct RegistryStore {
     lock_store: LockStore,
     admin: Address,
@@ -76,6 +85,8 @@ struct RegistryStore {
 }
 
 impl RegistryStore {
+    /// Locks a challenge for the caller. Requires the challenge to be open
+    /// and a sufficient deposit (via msg.value).
     pub fn lock(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         if !self.challenges.get(key: challenge).is_open {
             return Err(Error::InvalidClaim)
@@ -86,6 +97,7 @@ impl RegistryStore {
         self.lock_store.acquire(challenge, claimer: ctx.caller())
     }
 
+    /// Registers a new challenge with a prize amount. Admin only.
     pub fn register_challenge(mut self, challenge: Address, prize_amount: u128) -> Result<Error, ()> uses (ctx: Ctx) {
         if ctx.caller() != self.admin {
             return Err(Error::OnlyAdmin)
@@ -94,6 +106,8 @@ impl RegistryStore {
         Ok(())
     }
 
+    /// Removes a challenge (marks it as closed). Admin only.
+    /// Fails if the challenge is currently locked.
     pub fn remove_challenge(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         if ctx.caller() != self.admin {
             return Err(Error::OnlyAdmin)
@@ -105,23 +119,28 @@ impl RegistryStore {
         Ok(())
     }
 
+    /// Claims a solved challenge. The caller must hold the active lock and the
+    /// challenge's puzzle contract must report `isSolved() == true`.
+    /// On success, transfers the prize to the caller and closes the challenge.
     pub fn claim(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx, call: mut Call) {
         if !self.lock_store.owns_lock(challenge, owner: ctx.caller()) {
             return Err(Error::MissingLock)
         }
-        let c = self.challenges.get(key: challenge)
-        if !c.is_open {
+        let entry = self.challenges.get(key: challenge)
+        if !entry.is_open {
             return Err(Error::InvalidClaim)
         }
-        let solved: bool = challenge.call(SolvableMsg::IsSolved {})
-        if !solved {
+
+        if !challenge.call(SolvableMsg::IsSolved {}) {
             return Err(Error::InvalidClaim)
         }
-        ops::call(ops::gas(), ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
+        ops::call(ops::gas(), ctx.caller().inner, entry.prize_amount as u256, 0, 0, 0, 0)
         self.challenges.set(key: challenge, value: Challenge::closed())
         Ok(())
     }
 
+    /// Validates that `owner` holds an active lock on the given challenge.
+    /// Used by game contracts to authorize moves.
     pub fn validate_owns_lock(self, challenge: Address, owner: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         if !self.lock_store.owns_lock(challenge, owner) {
             return Err(Error::MissingLock)
@@ -129,6 +148,8 @@ impl RegistryStore {
         Ok(())
     }
 
+    /// Withdraws the entire contract balance to the admin. Admin only.
+    /// Fails if any lock is still active to prevent rug-pulling locked deposits.
     pub fn withdraw(self) -> Result<Error, ()> uses (ctx: Ctx) {
         if ctx.caller() != self.admin {
             return Err(Error::OnlyAdmin)
