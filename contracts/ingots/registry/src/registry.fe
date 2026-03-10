@@ -90,8 +90,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if ctx.value() < store.lock_deposit {
                 return Error::InvalidDeposit.to_int()
             }
-            let result = store.lock_store.acquire(challenge, claimer: ctx.caller().inner)
-            match result {
+            return match store.lock_store.acquire(challenge, claimer: ctx.caller().inner) {
                 Ok(()) => 0
                 Err(e) => e.to_int()
             }
