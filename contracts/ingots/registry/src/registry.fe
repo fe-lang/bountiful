@@ -45,7 +45,7 @@ impl LockStore {
         self.locks.get(key: challenge)
     }
 
-    pub fn acquire(mut self, challenge: Address, claimer: u256) -> Result<Error, ()> uses (ctx: Ctx) {
+    pub fn acquire(mut self, challenge: Address, claimer: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         let existing = self.locks.get(key: challenge)
         if existing.valid_until_block > ctx.block_number() {
             return Err(Error::AlreadyLocked)
@@ -56,6 +56,11 @@ impl LockStore {
         }
         self.locks.set(key: challenge, value: shared::Lock { claimer, valid_until_block: new_expiry })
         return Ok(())
+    }
+
+    pub fn owns_lock(self, challenge: Address, owner: Address) -> bool uses (ctx: Ctx) {
+        let lock = self.locks.get(key: challenge)
+        lock.claimer == owner && lock.valid_until_block > ctx.block_number()
     }
 
     pub fn is_locked(self, challenge: Address) -> bool uses (ctx: Ctx) {
@@ -90,7 +95,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if ctx.value() < store.lock_deposit {
                 return Error::InvalidDeposit.to_int()
             }
-            return match store.lock_store.acquire(challenge, claimer: ctx.caller().inner) {
+            return match store.lock_store.acquire(challenge, claimer: ctx.caller()) {
                 Ok(()) => 0
                 Err(e) => e.to_int()
             }
@@ -124,11 +129,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
-            let lock = store.lock_store.get(challenge)
-            if lock.claimer != ctx.caller().inner {
-                return Error::MissingLock.to_int()
-            }
-            if lock.valid_until_block <= ctx.block_number() {
+            if !store.lock_store.owns_lock(challenge, owner: ctx.caller()) {
                 return Error::MissingLock.to_int()
             }
             let c = store.challenges.get(key: challenge)
@@ -152,11 +153,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         ValidateOwnsLock { owner, challenge } -> u256 uses (store, ctx) {
-            let lock = store.lock_store.get(challenge)
-            if lock.claimer != owner.inner {
-                return Error::MissingLock.to_int()
-            }
-            if lock.valid_until_block <= ctx.block_number() {
+            if !store.lock_store.owns_lock(challenge, owner: owner) {
                 return Error::MissingLock.to_int()
             }
             return 0
