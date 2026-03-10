@@ -53,7 +53,7 @@ jobs:
 
       - name: Build site
         working-directory: web
-        run: zola build
+        run: zola build --base-url https://fe-lang.github.io/bountiful
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
