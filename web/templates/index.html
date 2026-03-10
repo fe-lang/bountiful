@@ -59,7 +59,8 @@
         <td>
           <div class="contract-entry">
             <span class="contract-value">0x1234...5678</span>
-            <button type="button" class="copy-contract-btn" data-copy-value="0x1234...5678" aria-label="Copy registry contract address">COPY</button>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x1234...5678" aria-label="Copy registry contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="registry::registry::BountyRegistry" aria-label="View registry source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
@@ -68,7 +69,8 @@
         <td>
           <div class="contract-entry">
             <span class="contract-value">0xABCD...EF01</span>
-            <button type="button" class="copy-contract-btn" data-copy-value="0xABCD...EF01" aria-label="Copy game contract address">COPY</button>
+            <button type="button" class="copy-contract-btn" data-copy-value="0xABCD...EF01" aria-label="Copy game contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="games::game::Game" aria-label="View game source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
@@ -77,7 +79,8 @@
         <td>
           <div class="contract-entry">
             <span class="contract-value">0x2345...6789</span>
-            <button type="button" class="copy-contract-btn" data-copy-value="0x2345...6789" aria-label="Copy game 2d contract address">COPY</button>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x2345...6789" aria-label="Copy game 2d contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="games::game_2d::Game2D" aria-label="View game 2d source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
@@ -86,7 +89,8 @@
         <td>
           <div class="contract-entry">
             <span class="contract-value">0x3456...7890</span>
-            <button type="button" class="copy-contract-btn" data-copy-value="0x3456...7890" aria-label="Copy game enum contract address">COPY</button>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x3456...7890" aria-label="Copy game enum contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="games::game_enum::GameEnum" aria-label="View game enum source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
@@ -95,30 +99,35 @@
         <td>
           <div class="contract-entry">
             <span class="contract-value">0x4567...8901</span>
-            <button type="button" class="copy-contract-btn" data-copy-value="0x4567...8901" aria-label="Copy game bit contract address">COPY</button>
+            <button type="button" class="copy-contract-btn" data-copy-value="0x4567...8901" aria-label="Copy game bit contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="games::game_bitboard::GameBitboard" aria-label="View game bit source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
       <tr><td>NETWORK</td><td>ETHEREUM MAINNET</td></tr>
+      <tr>
+        <td>DOCS</td>
+        <td><a href="/api/">[D] FULL API REFERENCE</a></td>
+      </tr>
     </table>
   </section>
 
-  {# ── SOURCE (bottom-right) ── #}
-  <section id="source" class="c64-quadrant">
+  {# ── SOURCE VIEWER (bottom-right) ── #}
+  <section id="source-viewer" class="c64-quadrant">
     <h2>&gt; SOURCE</h2>
-    <table class="c64-table">
-      <tr>
-        <td>REPOSITORY</td>
-        <td><a href="https://github.com/fe-lang/bountiful" target="_blank" rel="noopener">GITHUB.COM/FE-LANG/BOUNTIFUL</a></td>
-      </tr>
-      <tr>
-        <td>FE LANG</td>
-        <td><a href="https://fe-lang.org" target="_blank" rel="noopener">FE-LANG.ORG</a></td>
-      </tr>
-    </table>
+    <div id="source-viewer-content" class="source-viewer-content">
+      <p class="source-viewer-hint">SELECT A CONTRACT AND CLICK SHOW SOURCE TO VIEW SOURCE</p>
+    </div>
   </section>
 
 </div>
+
+<footer class="c64-footer">
+  <a href="https://github.com/fe-lang/bountiful" target="_blank" rel="noopener">REPO</a>
+  <a href="/api/">API DOCS</a>
+  <a href="https://fe-lang.org" target="_blank" rel="noopener">FE-LANG.ORG</a>
+  <span class="c64-footer-credit">DOCS GENERATED WITH <a href="https://fe-lang.org" target="_blank" rel="noopener">FE DOC</a></span>
+</footer>
 
 {% endblock %}
 
@@ -137,6 +146,119 @@
     document.body.removeChild(input);
   };
 
+  // Render a rich_signature array into an HTML string
+  function renderRichSig(parts) {
+    if (!parts) return '';
+    return parts.map(p => {
+      const escaped = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (p.link) {
+        return '<a href="#' + p.link + '" class="sig-link">' + escaped + '</a>';
+      }
+      return escaped;
+    }).join('');
+  }
+
+  // Render fields and implementations below the code block
+  function renderDocDetails(viewer, symbolPath) {
+    const index = window.FE_DOC_INDEX;
+    if (!index || !index.items) return;
+    const item = index.items.find(i => i.path === symbolPath);
+    if (!item) return;
+
+    // Fields
+    const fields = (item.children || []).filter(c => c.kind === 'field');
+    if (fields.length > 0) {
+      const section = document.createElement('div');
+      section.className = 'doc-fields';
+      section.innerHTML = '<h3>&gt; FIELDS</h3>';
+      fields.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'doc-field';
+        const sig = f.rich_signature ? renderRichSig(f.rich_signature) : f.signature;
+        div.innerHTML = '<code class="doc-sig">' + sig + '</code>'
+          + (f.docs && f.docs.summary ? '<p class="doc-desc">' + f.docs.summary + '</p>' : '');
+        section.appendChild(div);
+      });
+      viewer.appendChild(section);
+    }
+
+    // Implementations
+    const impls = item.trait_impls || [];
+    if (impls.length > 0) {
+      impls.forEach(impl => {
+        const section = document.createElement('div');
+        section.className = 'doc-impl';
+        const implSig = impl.rich_signature ? renderRichSig(impl.rich_signature) : impl.signature;
+        section.innerHTML = '<h3>&gt; <code class="doc-sig">' + implSig + '</code></h3>';
+
+        (impl.methods || []).forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'doc-method';
+          const mSig = m.rich_signature ? renderRichSig(m.rich_signature) : m.signature;
+          div.innerHTML = '<code class="doc-sig">' + mSig + '</code>'
+            + (m.docs && m.docs.summary ? '<p class="doc-desc">' + m.docs.summary + '</p>' : '');
+          section.appendChild(div);
+        });
+
+        viewer.appendChild(section);
+      });
+    }
+  }
+
+  // Show source for a given SCIP symbol in the viewer quadrant
+  function showSource(symbol, label) {
+    // Clear active button highlight (only relevant for contract table buttons)
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+    const matchingBtn = document.querySelector('.source-btn[data-symbol="' + symbol + '"]');
+    if (matchingBtn) matchingBtn.classList.add('active');
+
+    const viewer = document.getElementById('source-viewer-content');
+    const displayName = label || symbol.split('::').pop();
+    viewer.innerHTML = '<p class="source-viewer-label">' + displayName + '</p>';
+
+    const codeBlock = document.createElement('fe-code-block');
+    codeBlock.setAttribute('symbol', symbol);
+    codeBlock.setAttribute('line-numbers', '');
+    viewer.appendChild(codeBlock);
+
+    // Render fields & implementations once doc index is available
+    if (window.FE_DOC_INDEX && window.FE_DOC_INDEX.items) {
+      renderDocDetails(viewer, symbol);
+    } else {
+      document.addEventListener('fe-web-ready', function onReady() {
+        document.removeEventListener('fe-web-ready', onReady);
+        renderDocDetails(viewer, symbol);
+      });
+    }
+  }
+
+  // Source viewer: show contract source in bottom-right quadrant
+  document.querySelectorAll('.source-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const symbol = button.dataset.symbol;
+      if (!symbol) return;
+
+      const row = button.closest('tr');
+      const name = row ? row.querySelector('td').textContent : symbol;
+      showSource(symbol, name);
+    });
+  });
+
+  // Intercept symbol link clicks from within fe-code-block.
+  // The component sets location.hash = "#" + docPath when a symbol is clicked.
+  // The docPath is already the format fe-code-block expects as its symbol attribute.
+  window.addEventListener('hashchange', () => {
+    const docUrl = location.hash.replace(/^#/, '');
+    if (!docUrl) return;
+
+    history.replaceState(null, '', location.pathname);
+    // Doc URLs have a kind suffix like /struct, /contract, /mod — strip it
+    // to get the path that fe-code-block and FE_DOC_INDEX use.
+    const symbolPath = docUrl.replace(/\/[^/]*$/, '');
+    const name = symbolPath.split('::').pop();
+    showSource(symbolPath, name);
+  });
+
   document.querySelectorAll('.copy-contract-btn').forEach((button) => {
     button.addEventListener('click', async () => {
       const value = button.dataset.copyValue;
@@ -152,16 +274,20 @@
         button.textContent = 'COPIED';
         button.classList.add('copied');
         window.setTimeout(() => {
-          button.textContent = 'COPY';
+          button.textContent = 'COPY ADDRESS';
           button.classList.remove('copied');
         }, 1200);
       } catch (_error) {
         button.textContent = 'FAILED';
         window.setTimeout(() => {
-          button.textContent = 'COPY';
+          button.textContent = 'COPY ADDRESS';
         }, 1200);
       }
     });
   });
+
+  // Pre-select Registry source on load
+  const registryBtn = document.querySelector('.source-btn[data-symbol="registry::registry::BountyRegistry"]');
+  if (registryBtn) registryBtn.click();
 </script>
 {% endblock %}

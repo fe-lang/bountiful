@@ -9,6 +9,65 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ get_url(path='css/c64.css') }}">
+  <style>
+  /* fe-highlight.css — required for <fe-code-block> shadow DOM styling */
+  .hl-keyword { color: var(--fe-hl-keyword, #c678dd); }
+  .hl-type, .hl-type-builtin { color: var(--fe-hl-type, #e5c07b); }
+  .hl-type-interface { color: var(--fe-hl-type-interface, #e77ee7); }
+  .hl-type-enum-variant { color: var(--fe-hl-type-variant, #e7c77e); }
+  .hl-function, .hl-function-definition, .hl-function-method { color: var(--fe-hl-function, #61afef); }
+  .hl-string { color: var(--fe-hl-string, #98c379); }
+  .hl-string-escape { color: var(--fe-hl-string-escape, #56b6c2); }
+  .hl-number { color: var(--fe-hl-number, #d19a66); }
+  .hl-comment, .hl-comment-doc { color: var(--fe-hl-comment, #5c6370); font-style: italic; }
+  .hl-operator { color: var(--fe-hl-operator, #abb2bf); }
+  .hl-property, .hl-variable-parameter { color: var(--fe-hl-variable, #e06c75); }
+  .hl-variable { color: var(--fe-hl-variable, #e06c75); }
+  .hl-attribute { color: var(--fe-hl-attribute, #d19a66); }
+  .hl-constant { color: var(--fe-hl-constant, #d19a66); font-weight: bold; }
+  .hl-punctuation-bracket, .hl-punctuation-delimiter, .hl-punctuation-special { color: var(--fe-hl-punctuation, #abb2bf); }
+  [class*="sym-"] {
+    transition: background 0.2s ease-out, text-decoration 0.2s ease-out,
+                text-decoration-color 0.2s ease-out;
+  }
+  fe-code-block { display: block; margin: 1rem 0; }
+  .fe-code-block-wrapper {
+    display: flex;
+    background: var(--fe-code-bg, #0d1117);
+    border: 1px solid var(--fe-code-border, #2d3748);
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  .fe-line-numbers {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 0.5rem;
+    border-right: 1px solid var(--fe-code-border, #2d3748);
+    text-align: right;
+    user-select: none;
+    color: var(--fe-code-line-number, #9ba3af);
+    font-family: var(--fe-code-font, "JetBrains Mono", "Fira Code", monospace);
+    font-size: var(--fe-code-size, 0.8rem);
+    line-height: var(--fe-code-line-height, 1.6);
+  }
+  .fe-line-numbers span { line-height: var(--fe-code-line-height, 1.6); }
+  .fe-code-pre {
+    flex: 1;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    overflow-x: auto;
+    font-family: var(--fe-code-font, "JetBrains Mono", "Fira Code", monospace);
+    font-size: var(--fe-code-size, 0.8rem);
+    line-height: var(--fe-code-line-height, 1.6);
+  }
+  .fe-code-pre code {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    color: var(--fe-code-text, #e4e4e4);
+  }
+  </style>
 </head>
 <body>
   <div class="c64-border">
@@ -17,5 +76,9 @@
     </div>
   </div>
   {% block scripts %}{% endblock %}
+  <script type="module" src="{{ get_url(path='api/fe-web.js') }}"
+    data-src="{{ get_url(path='api/docs.json') }}"
+    data-docs="/api/">
+  </script>
 </body>
 </html>

@@ -2,10 +2,27 @@
 :root {
   --c64-bg: #40318D;
   --c64-border: #7869C4;
-  --c64-text: #C8BFE7;
+  --c64-text: #DDD6F3;
   --c64-white: #FFFFFF;
   --c64-dark: #2B1E5C;
   --font: 'Press Start 2P', monospace;
+
+  /* Fe web component theming */
+  --fe-code-bg: #2B1E5C;
+  --fe-code-border: #7869C4;
+  --fe-code-text: #C8BFE7;
+  --fe-code-font: 'Press Start 2P', monospace;
+  --fe-code-size: 0.5rem;
+  --fe-code-line-height: 1.8;
+  --fe-code-line-number: #7869C4;
+  --fe-hl-keyword: #c678dd;
+  --fe-hl-type: #e5c07b;
+  --fe-hl-function: #7ec8ff;
+  --fe-hl-string: #98c379;
+  --fe-hl-number: #d19a66;
+  --fe-hl-comment: #7869C4;
+  --fe-hl-operator: #C8BFE7;
+  --fe-hl-punctuation: #C8BFE7;
 }
 
 /* ── RESET ── */
@@ -159,6 +176,122 @@ ol li::before {
   color: var(--c64-white);
 }
 
+/* ── SRC BUTTON ── */
+.source-btn {
+  font-family: var(--font);
+  font-size: 0.45rem;
+  line-height: 1;
+  color: var(--c64-bg);
+  background: var(--c64-text);
+  border: 1px solid var(--c64-dark);
+  padding: 5px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.source-btn:hover,
+.source-btn:focus {
+  background: var(--c64-white);
+  outline: none;
+}
+
+.source-btn.active {
+  background: var(--c64-white);
+}
+
+/* ── SOURCE VIEWER (bottom-right) ── */
+.source-viewer-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.source-viewer-content fe-code-block {
+  margin: 0;
+}
+
+.source-viewer-hint {
+  font-size: 0.5rem;
+  opacity: 0.6;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.source-viewer-label {
+  font-size: 0.55rem;
+  color: var(--c64-white);
+  margin-bottom: 6px;
+}
+
+#source-viewer {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── DOC DETAILS (fields & impls in source viewer) ── */
+.doc-fields,
+.doc-impl {
+  margin-top: 12px;
+  border-top: 1px solid var(--c64-dark);
+  padding-top: 8px;
+}
+
+.doc-field,
+.doc-method {
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-left: 2px solid var(--c64-border);
+}
+
+.doc-sig {
+  font-family: var(--font);
+  font-size: 0.55rem;
+  color: var(--c64-text);
+  word-break: break-all;
+}
+
+.doc-sig .sig-link {
+  color: var(--c64-white);
+  text-decoration: none;
+}
+
+.doc-sig .sig-link:hover {
+  text-decoration: underline;
+}
+
+.doc-desc {
+  font-size: 0.55rem;
+  margin-top: 4px;
+  margin-bottom: 0;
+  opacity: 0.7;
+}
+
+/* ── GLOBAL FOOTER ── */
+.c64-footer {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 6px 0;
+  flex-shrink: 0;
+}
+
+.c64-footer a {
+  font-family: var(--font);
+  font-size: 0.45rem;
+  color: var(--c64-text);
+  text-decoration: none;
+}
+
+.c64-footer a:hover {
+  color: var(--c64-white);
+}
+
+.c64-footer-credit {
+  font-family: var(--font);
+  font-size: 0.45rem;
+  color: var(--c64-border);
+}
+
 /* ── MORE-INFO LINK ── */
 .more-info {
   margin-top: 12px;
@@ -205,12 +338,12 @@ ol li::before {
 .contract-entry {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 6px;
 }
 
 .contract-value {
   min-width: 0;
+  flex: 1;
 }
 
 .copy-contract-btn {
