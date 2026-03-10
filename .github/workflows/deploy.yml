@@ -1,0 +1,72 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Allow only one deployment at a time
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  FE_VERSION: "26.0.0-alpha.9"
+  ZOLA_VERSION: "0.19.2"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download Fe compiler
+        run: |
+          curl -L -o fe \
+            "https://github.com/argotorg/fe/releases/download/v${{ env.FE_VERSION }}/fe_linux_amd64"
+          chmod +x fe
+          sudo mv fe /usr/local/bin/fe
+          fe --version
+
+      - name: Generate API docs
+        working-directory: contracts
+        run: |
+          fe doc -o ../web/static/api json
+          fe doc -o ../web/static/api bundle
+          fe doc -o ../web/static/api static
+
+      - name: Install Zola
+        run: |
+          curl -L -o zola.tar.gz \
+            "https://github.com/getzola/zola/releases/download/v${{ env.ZOLA_VERSION }}/zola-v${{ env.ZOLA_VERSION }}-x86_64-unknown-linux-gnu.tar.gz"
+          tar xzf zola.tar.gz
+          chmod +x zola
+          sudo mv zola /usr/local/bin/zola
+
+      - name: Build site
+        working-directory: web
+        run: zola build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
