@@ -75,6 +75,37 @@ impl WordRepr for Challenge {
 }
 
 // =============================================================================
+// Lock struct — packed into a single u256 for StorageMap compatibility
+//
+// Layout: [160 bits claimer | 96 bits valid_until_block]
+// =============================================================================
+
+pub struct Lock {
+    pub claimer: u256,
+    pub valid_until_block: u256,
+}
+
+const LOCK_BLOCK_MASK: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFF // 96 bits
+
+impl Lock {
+    pub fn empty() -> Self {
+        Lock { claimer: 0, valid_until_block: 0 }
+    }
+}
+
+impl WordRepr for Lock {
+    fn from_word(word: u256) -> Self {
+        let claimer = word >> 96
+        let valid_until_block = word & LOCK_BLOCK_MASK
+        Lock { claimer, valid_until_block }
+    }
+
+    fn to_word(own self) -> u256 {
+        (self.claimer << 96) | (self.valid_until_block & LOCK_BLOCK_MASK)
+    }
+}
+
+// =============================================================================
 // Game constants
 // =============================================================================
 
@@ -161,4 +192,36 @@ fn test_challenge_closed_helper() uses (evm: mut Evm) {
     let c = Challenge::closed()
     assert(!c.is_open)
     assert(c.prize_amount == 0)
+}
+
+#[test]
+fn test_lock_word_repr_roundtrip() uses (evm: mut Evm) {
+    let claimer: u256 = 0xDEADBEEF12345678
+    let block: u256 = 42000
+    let lock = Lock { claimer, valid_until_block: block }
+    let word = lock.to_word()
+    let lock2 = Lock::from_word(word)
+    assert(lock2.claimer == claimer)
+    assert(lock2.valid_until_block == block)
+}
+
+#[test]
+fn test_lock_word_repr_empty() uses (evm: mut Evm) {
+    let lock = Lock::empty()
+    let word = lock.to_word()
+    let lock2 = Lock::from_word(word)
+    assert(lock2.claimer == 0)
+    assert(lock2.valid_until_block == 0)
+}
+
+#[test]
+fn test_lock_word_repr_full_address() uses (evm: mut Evm) {
+    // Full 160-bit address
+    let claimer: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    let block: u256 = 999999
+    let lock = Lock { claimer, valid_until_block: block }
+    let word = lock.to_word()
+    let lock2 = Lock::from_word(word)
+    assert(lock2.claimer == claimer)
+    assert(lock2.valid_until_block == block)
 }

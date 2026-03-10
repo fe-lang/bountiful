@@ -8,6 +8,7 @@ use std::evm::ops
 use shared::{
     Error,
     Challenge,
+    Lock,
     LOCK_PERIOD,
     SolvableMsg,
 }
@@ -34,10 +35,40 @@ pub msg RegistryMsg {
     GetBalance -> u256,
 }
 
-struct RegistryStore {
-    lock_claimers: StorageMap<Address, u256>,
-    lock_valid_until_blocks: StorageMap<Address, u256>,
+struct LockStore {
+    locks: StorageMap<Address, Lock>,
     latest_lock_expiry: u256,
+}
+
+impl LockStore {
+    pub fn get(self, challenge: Address) -> Lock {
+        self.locks.get(key: challenge)
+    }
+
+    pub fn acquire(mut self, challenge: Address, claimer: u256) -> Result<Error, ()> uses (ctx: Ctx) {
+        let existing = self.locks.get(key: challenge)
+        if existing.valid_until_block > ctx.block_number() {
+            return Err(Error::AlreadyLocked)
+        }
+        let new_expiry = ctx.block_number() + LOCK_PERIOD
+        if new_expiry > self.latest_lock_expiry {
+            self.latest_lock_expiry = new_expiry
+        }
+        self.locks.set(key: challenge, value: shared::Lock { claimer, valid_until_block: new_expiry })
+        return Ok(())
+    }
+
+    pub fn is_locked(self, challenge: Address) -> bool uses (ctx: Ctx) {
+        self.locks.get(key: challenge).valid_until_block > ctx.block_number()
+    }
+
+    pub fn is_any_active(self) -> bool uses (ctx: Ctx) {
+        self.latest_lock_expiry > ctx.block_number()
+    }
+}
+
+struct RegistryStore {
+    lock_store: LockStore,
     admin: Address,
     lock_deposit: u256,
     challenges: StorageMap<Address, Challenge>,
@@ -49,7 +80,6 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
     init(admin: Address, lock_deposit: u256) uses (mut store) {
         store.admin = admin
         store.lock_deposit = lock_deposit
-        store.latest_lock_expiry = 0
     }
 
     recv RegistryMsg {
@@ -57,23 +87,18 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if !store.challenges.get(key: challenge).is_open {
                 return Error::InvalidClaim.to_int()
             }
-            if store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number() {
-                return Error::AlreadyLocked.to_int()
-            }
             if ctx.value() < store.lock_deposit {
                 return Error::InvalidDeposit.to_int()
             }
-            store.lock_claimers.set(key: challenge, value: ctx.caller().inner)
-            let new_expiry = ctx.block_number() + LOCK_PERIOD
-            store.lock_valid_until_blocks.set(key: challenge, value: new_expiry)
-            if new_expiry > store.latest_lock_expiry {
-                store.latest_lock_expiry = new_expiry
+            let result = store.lock_store.acquire(challenge, claimer: ctx.caller().inner)
+            match result {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            return 0
         }
 
         IsLocked { challenge } -> bool uses (store, ctx) {
-            store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number()
+            store.lock_store.is_locked(challenge)
         }
 
         RegisterChallenge { challenge, prize_amount } -> u256 uses (mut store, ctx) {
@@ -88,7 +113,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if ctx.caller() != store.admin {
                 return Error::OnlyAdmin.to_int()
             }
-            if store.lock_valid_until_blocks.get(key: challenge) > ctx.block_number() {
+            if store.lock_store.is_locked(challenge) {
                 return Error::AlreadyLocked.to_int()
             }
             store.challenges.set(key: challenge, value: Challenge::closed())
@@ -100,10 +125,11 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
-            if store.lock_claimers.get(key: challenge) != ctx.caller().inner {
+            let lock = store.lock_store.get(challenge)
+            if lock.claimer != ctx.caller().inner {
                 return Error::MissingLock.to_int()
             }
-            if store.lock_valid_until_blocks.get(key: challenge) <= ctx.block_number() {
+            if lock.valid_until_block <= ctx.block_number() {
                 return Error::MissingLock.to_int()
             }
             let c = store.challenges.get(key: challenge)
@@ -127,10 +153,11 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         ValidateOwnsLock { owner, challenge } -> u256 uses (store, ctx) {
-            if store.lock_claimers.get(key: challenge) != owner.inner {
+            let lock = store.lock_store.get(challenge)
+            if lock.claimer != owner.inner {
                 return Error::MissingLock.to_int()
             }
-            if store.lock_valid_until_blocks.get(key: challenge) <= ctx.block_number() {
+            if lock.valid_until_block <= ctx.block_number() {
                 return Error::MissingLock.to_int()
             }
             return 0
@@ -140,7 +167,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if ctx.caller() != store.admin {
                 return Error::OnlyAdmin.to_int()
             }
-            if store.latest_lock_expiry > ctx.block_number() {
+            if store.lock_store.is_any_active() {
                 return Error::AlreadyLocked.to_int()
             }
             ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
