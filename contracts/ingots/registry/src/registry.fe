@@ -41,10 +41,6 @@ struct LockStore {
 }
 
 impl LockStore {
-    pub fn get(self, challenge: Address) -> Lock {
-        self.locks.get(key: challenge)
-    }
-
     pub fn acquire(mut self, challenge: Address, claimer: Address) -> Result<Error, ()> uses (ctx: Ctx) {
         let existing = self.locks.get(key: challenge)
         if existing.valid_until_block > ctx.block_number() {
@@ -137,17 +133,12 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
                 return Error::InvalidClaim.to_int()
             }
             // Cross-contract call to check if puzzle is solved
-            let solved: bool = call.call(
-                addr: challenge,
-                gas: 100000,
-                value: 0,
-                message: SolvableMsg::IsSolved {}
-            )
+            let solved: bool = challenge.call(SolvableMsg::IsSolved {})
             if !solved {
                 return Error::InvalidClaim.to_int()
             }
             // Send the challenge's prize amount to the claimer
-            ops::call(100000, ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
+            ops::call(ops::gas(), ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
             store.challenges.set(key: challenge, value: Challenge::closed())
             return 0
         }
@@ -166,7 +157,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             if store.lock_store.is_any_active() {
                 return Error::AlreadyLocked.to_int()
             }
-            ops::call(100000, ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
+            ops::call(ops::gas(), ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
             return 0
         }
 
