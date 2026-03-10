@@ -3,7 +3,7 @@
 {% block content %}
 
 <header class="c64-header">
-  <p class="stars">**** BOUNTIFUL V1 ****</p>
+  <p class="stars">**** BOUNTIFUL ****</p>
   <p>FIND BUGS. CLAIM BOUNTIES.<span class="cursor">&#9608;</span></p>
 </header>
 
@@ -14,12 +14,15 @@
     <h2>&gt; ABOUT</h2>
     <p>
       BOUNTIFUL IS A BUG BOUNTY PLATFORM FOR THE
-      <a href="https://github.com/ethereum/fe" target="_blank" rel="noopener">FE COMPILER</a>.
+      <a href="https://github.com/argotorg/fe" target="_blank" rel="noopener">FE COMPILER</a>.
     </p>
     <p>
-      EACH CHALLENGE IS A 15-PUZZLE DEPLOYED ON-CHAIN
-      IN AN UNSOLVABLE STATE. IF YOU CAN SOLVE IT,
-      YOU HAVE FOUND A COMPILER BUG.
+      THE PLATFORM HOSTS A SERIES OF CHALLENGES THAT SHOULD NOT BE SOLVABLE.
+      IF YOU DO SOLVE A CHALLENGE, YOU HAVE FOUND A BUG EITHER IN THE COMPILER, THE CHALLENGE CONTRACT, OR THE REGISTRY IMPLEMENTATION.
+    </p>
+    <p>
+      IN ANY CASE, SOLVING A CHALLENGE ALLOWS YOU TO PERMISSIONLESSLY CLAIM A CASH PRIZE HELD IN THE REGISTRY CONTRACT.
+      FOR NOW, EACH CHALLENGE IS A VARIATION OF THE POPULAR 15-PUZZLE, DEPLOYED IN AN UNSOLVABLE STATE.
     </p>
     <h3>&gt; HOW TO PARTICIPATE</h3>
     <ol>
@@ -28,6 +31,7 @@
       <li>EXPLOIT THE BUG TO SOLVE THE PUZZLE</li>
       <li>CLAIM YOUR BOUNTY</li>
     </ol>
+    <p class="more-info"><a href="https://github.com/fe-lang/bountiful/blob/master/doc/bounty-hunting-guide.md" target="_blank" rel="noopener">&gt; READ THE BOUNTY HUNTING GUIDE</a></p>
   </section>
 
   {# ── PLAY (top-right) ── #}
@@ -95,7 +99,7 @@
           </div>
         </td>
       </tr>
-      <tr><td>NETWORK</td><td>ETHEREUM SEPOLIA</td></tr>
+      <tr><td>NETWORK</td><td>ETHEREUM MAINNET</td></tr>
     </table>
   </section>
 
@@ -105,7 +109,7 @@
     <table class="c64-table">
       <tr>
         <td>REPOSITORY</td>
-        <td><a href="https://github.com/cburgdorf/bountiful" target="_blank" rel="noopener">GITHUB.COM/CBURGDORF/BOUNTIFUL</a></td>
+        <td><a href="https://github.com/fe-lang/bountiful" target="_blank" rel="noopener">GITHUB.COM/FE-LANG/BOUNTIFUL</a></td>
       </tr>
       <tr>
         <td>FE LANG</td>

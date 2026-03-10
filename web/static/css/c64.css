@@ -159,6 +159,22 @@ ol li::before {
   color: var(--c64-white);
 }
 
+/* ── MORE-INFO LINK ── */
+.more-info {
+  margin-top: 12px;
+}
+
+.more-info a {
+  font-size: 0.55rem;
+  color: var(--c64-white);
+  text-decoration: none;
+}
+
+.more-info a:hover {
+  color: var(--c64-text);
+  text-decoration: underline;
+}
+
 /* ── TABLE (Contracts / Source) ── */
 .c64-table {
   width: 100%;
