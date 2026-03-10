@@ -75,6 +75,72 @@ struct RegistryStore {
     challenges: StorageMap<Address, Challenge>,
 }
 
+impl RegistryStore {
+    pub fn lock(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx) {
+        if !self.challenges.get(key: challenge).is_open {
+            return Err(Error::InvalidClaim)
+        }
+        if ctx.value() < self.lock_deposit {
+            return Err(Error::InvalidDeposit)
+        }
+        self.lock_store.acquire(challenge, claimer: ctx.caller())
+    }
+
+    pub fn register_challenge(mut self, challenge: Address, prize_amount: u128) -> Result<Error, ()> uses (ctx: Ctx) {
+        if ctx.caller() != self.admin {
+            return Err(Error::OnlyAdmin)
+        }
+        self.challenges.set(key: challenge, value: Challenge::new(is_open: true, prize_amount))
+        Ok(())
+    }
+
+    pub fn remove_challenge(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx) {
+        if ctx.caller() != self.admin {
+            return Err(Error::OnlyAdmin)
+        }
+        if self.lock_store.is_locked(challenge) {
+            return Err(Error::AlreadyLocked)
+        }
+        self.challenges.set(key: challenge, value: Challenge::closed())
+        Ok(())
+    }
+
+    pub fn claim(mut self, challenge: Address) -> Result<Error, ()> uses (ctx: Ctx, call: mut Call) {
+        if !self.lock_store.owns_lock(challenge, owner: ctx.caller()) {
+            return Err(Error::MissingLock)
+        }
+        let c = self.challenges.get(key: challenge)
+        if !c.is_open {
+            return Err(Error::InvalidClaim)
+        }
+        let solved: bool = challenge.call(SolvableMsg::IsSolved {})
+        if !solved {
+            return Err(Error::InvalidClaim)
+        }
+        ops::call(ops::gas(), ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
+        self.challenges.set(key: challenge, value: Challenge::closed())
+        Ok(())
+    }
+
+    pub fn validate_owns_lock(self, challenge: Address, owner: Address) -> Result<Error, ()> uses (ctx: Ctx) {
+        if !self.lock_store.owns_lock(challenge, owner) {
+            return Err(Error::MissingLock)
+        }
+        Ok(())
+    }
+
+    pub fn withdraw(self) -> Result<Error, ()> uses (ctx: Ctx) {
+        if ctx.caller() != self.admin {
+            return Err(Error::OnlyAdmin)
+        }
+        if self.lock_store.is_any_active() {
+            return Err(Error::AlreadyLocked)
+        }
+        ops::call(ops::gas(), ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
+        Ok(())
+    }
+}
+
 pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
     mut store: RegistryStore
 
@@ -85,13 +151,7 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
 
     recv RegistryMsg {
         Lock { challenge } -> u256 uses (mut store, ctx) {
-            if !store.challenges.get(key: challenge).is_open {
-                return Error::InvalidClaim.to_int()
-            }
-            if ctx.value() < store.lock_deposit {
-                return Error::InvalidDeposit.to_int()
-            }
-            return match store.lock_store.acquire(challenge, claimer: ctx.caller()) {
+            match store.lock(challenge) {
                 Ok(()) => 0
                 Err(e) => e.to_int()
             }
@@ -102,22 +162,17 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         RegisterChallenge { challenge, prize_amount } -> u256 uses (mut store, ctx) {
-            if ctx.caller() != store.admin {
-                return Error::OnlyAdmin.to_int()
+            match store.register_challenge(challenge, prize_amount) {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            store.challenges.set(key: challenge, value: Challenge::new(is_open: true, prize_amount))
-            return 0
         }
 
         RemoveChallenge { challenge } -> u256 uses (mut store, ctx) {
-            if ctx.caller() != store.admin {
-                return Error::OnlyAdmin.to_int()
+            match store.remove_challenge(challenge) {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            if store.lock_store.is_locked(challenge) {
-                return Error::AlreadyLocked.to_int()
-            }
-            store.challenges.set(key: challenge, value: Challenge::closed())
-            return 0
         }
 
         IsOpenChallenge { challenge } -> bool uses (store) {
@@ -125,40 +180,24 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
         }
 
         Claim { challenge } -> u256 uses (mut store, ctx, mut call) {
-            if !store.lock_store.owns_lock(challenge, owner: ctx.caller()) {
-                return Error::MissingLock.to_int()
+            match store.claim(challenge) {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            let c = store.challenges.get(key: challenge)
-            if !c.is_open {
-                return Error::InvalidClaim.to_int()
-            }
-            // Cross-contract call to check if puzzle is solved
-            let solved: bool = challenge.call(SolvableMsg::IsSolved {})
-            if !solved {
-                return Error::InvalidClaim.to_int()
-            }
-            // Send the challenge's prize amount to the claimer
-            ops::call(ops::gas(), ctx.caller().inner, c.prize_amount as u256, 0, 0, 0, 0)
-            store.challenges.set(key: challenge, value: Challenge::closed())
-            return 0
         }
 
         ValidateOwnsLock { owner, challenge } -> u256 uses (store, ctx) {
-            if !store.lock_store.owns_lock(challenge, owner: owner) {
-                return Error::MissingLock.to_int()
+            match store.validate_owns_lock(challenge, owner) {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            return 0
         }
 
         Withdraw -> u256 uses (store, ctx) {
-            if ctx.caller() != store.admin {
-                return Error::OnlyAdmin.to_int()
+            match store.withdraw() {
+                Ok(()) => 0
+                Err(e) => e.to_int()
             }
-            if store.lock_store.is_any_active() {
-                return Error::AlreadyLocked.to_int()
-            }
-            ops::call(ops::gas(), ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
-            return 0
         }
 
         GetBalance -> u256 uses () {
