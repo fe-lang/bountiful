@@ -91,6 +91,24 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
+        // Write deployment manifest
+        string memory json = "manifest";
+        vm.serializeAddress(json, "BountyRegistry", registryAddr);
+        vm.serializeAddress(json, "Game", gameAddr);
+        vm.serializeAddress(json, "Game2D", game2dAddr);
+        vm.serializeAddress(json, "GameEnum", gameEnumAddr);
+        string memory output = vm.serializeAddress(json, "GameBitboard", gameBitboardAddr);
+
+        string memory path = string.concat(
+            "deployments/",
+            vm.toString(block.chainid),
+            "_",
+            vm.toString(block.number),
+            ".json"
+        );
+        vm.writeJson(output, path);
+        console.log("Manifest written to:", path);
+
         console.log("");
         console.log("=== Deployment complete ===");
         console.log("Registry:     ", registryAddr);

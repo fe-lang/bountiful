@@ -3,7 +3,7 @@ src = "src"
 test = "test"
 script = "script"
 out = "forge-out"
-fs_permissions = [{ access = "read", path = "./" }]
+fs_permissions = [{ access = "read", path = "./" }, { access = "write", path = "./deployments" }]
 
 [rpc_endpoints]
 mainnet = "${ETH_RPC_URL}"

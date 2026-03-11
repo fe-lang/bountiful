@@ -1,4 +1,4 @@
-.PHONY: build test test-fe test-forge docs clean
+.PHONY: build test test-fe test-forge deploy docs clean
 
 # Build Fe contracts and convert hex artifacts to binary
 build:
@@ -17,6 +17,10 @@ test-fe:
 # Build Fe contracts, then run Forge tests against fresh artifacts
 test-forge: build
 	forge test
+
+# Deploy contracts and write manifest
+deploy: build
+	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast
 
 # Generate Fe documentation (docs.json, fe-web.js, index.html)
 docs:
