@@ -1,8 +1,11 @@
 .PHONY: build test test-fe test-forge docs clean
 
-# Build Fe contracts
+# Build Fe contracts and convert hex artifacts to binary
 build:
 	cd contracts && fe build
+	@for f in contracts/out/*.bin; do \
+		xxd -r -p "$$f" "$$f.tmp" && mv "$$f.tmp" "$$f"; \
+	done
 
 # Run all tests (Fe + Forge)
 test: test-fe test-forge
