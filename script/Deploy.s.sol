@@ -5,14 +5,6 @@ import {Script, console} from "forge-std/Script.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 
-interface IGame {
-    function setCell(uint256 index, uint256 value) external;
-}
-
-interface IGame2D {
-    function setCell2D(uint256 row, uint256 col, uint256 value) external;
-}
-
 contract Deploy is Script {
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
     string constant GAME_BIN = "contracts/out/Game.bin";
@@ -20,23 +12,8 @@ contract Deploy is Script {
     string constant GAME_ENUM_BIN = "contracts/out/GameEnum.bin";
     string constant GAME_BITBOARD_BIN = "contracts/out/GameBitboard.bin";
 
-    // Initialize board via setCell(index, value): [1,2,...,14,0,15]
-    function _initBoard(IGame game) internal {
-        for (uint256 i = 0; i < 14; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(14, 0);
-        game.setCell(15, 15);
-    }
-
-    // Initialize board via setCell2D(row, col, value): same layout in 4x4 grid
-    function _initBoard2D(IGame2D game) internal {
-        for (uint256 i = 0; i < 14; i++) {
-            game.setCell2D(i / 4, i % 4, i + 1);
-        }
-        game.setCell2D(3, 2, 0);  // index 14 = row 3, col 2
-        game.setCell2D(3, 3, 15); // index 15 = row 3, col 3
-    }
+    // Packed board: [1,2,...,14,0,15] — one move from solved
+    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -59,33 +36,29 @@ contract Deploy is Script {
 
         // 2. Deploy Game (StorageMap variant)
         address gameAddr = FeDeployer.deployFeWithArgs(
-            vm, GAME_BIN, abi.encode(registryAddr)
+            vm, GAME_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
         );
-        _initBoard(IGame(gameAddr));
         registry.registerChallenge(gameAddr, prizeAmount);
         console.log("Game:", gameAddr);
 
         // 3. Deploy Game2D (2D array variant)
         address game2dAddr = FeDeployer.deployFeWithArgs(
-            vm, GAME_2D_BIN, abi.encode(registryAddr)
+            vm, GAME_2D_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
         );
-        _initBoard2D(IGame2D(game2dAddr));
         registry.registerChallenge(game2dAddr, prizeAmount);
         console.log("Game2D:", game2dAddr);
 
         // 4. Deploy GameEnum (enum variant)
         address gameEnumAddr = FeDeployer.deployFeWithArgs(
-            vm, GAME_ENUM_BIN, abi.encode(registryAddr)
+            vm, GAME_ENUM_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
         );
-        _initBoard(IGame(gameEnumAddr));
         registry.registerChallenge(gameEnumAddr, prizeAmount);
         console.log("GameEnum:", gameEnumAddr);
 
         // 5. Deploy GameBitboard (bitpacking variant)
         address gameBitboardAddr = FeDeployer.deployFeWithArgs(
-            vm, GAME_BITBOARD_BIN, abi.encode(registryAddr)
+            vm, GAME_BITBOARD_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
         );
-        _initBoard(IGame(gameBitboardAddr));
         registry.registerChallenge(gameBitboardAddr, prizeAmount);
         console.log("GameBitboard:", gameBitboardAddr);
 

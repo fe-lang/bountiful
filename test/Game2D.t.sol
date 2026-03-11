@@ -9,7 +9,6 @@ interface IGame2D {
     function getBoard(uint256 row, uint256 col) external view returns (uint256);
     function isSolved() external view returns (bool);
     function moveField(uint256 row, uint256 col) external;
-    function setCell2D(uint256 row, uint256 col, uint256 value) external;
 }
 
 contract Game2DTest is Test {
@@ -17,9 +16,14 @@ contract Game2DTest is Test {
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
 
-    function deployGame2D(address lockValidator) internal returns (IGame2D) {
+    // Packed board constants (4 bits per cell, cell 0 at bits 0..3)
+    uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
+    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    uint256 constant TWO_MOVES_BOARD = 0xFE0DCBA987654321;
+
+    function deployGame2D(address lockValidator, uint256 packedBoard) internal returns (IGame2D) {
         address addr = FeDeployer.deployFeWithArgs(
-            vm, GAME_2D_BIN, abi.encode(lockValidator)
+            vm, GAME_2D_BIN, abi.encode(lockValidator, packedBoard)
         );
         return IGame2D(addr);
     }
@@ -37,40 +41,13 @@ contract Game2DTest is Test {
         return IBountyRegistry(addr);
     }
 
-    /// Set up a winning board row by row: [1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,0]
-    function setupWinningBoard(IGame2D game) internal {
-        for (uint256 row = 0; row < 4; row++) {
-            for (uint256 col = 0; col < 4; col++) {
-                uint256 index = row * 4 + col;
-                uint256 value = index == 15 ? 0 : index + 1;
-                game.setCell2D(row, col, value);
-            }
-        }
-    }
-
-    /// Set up an almost-solved board: (3,2)=0, (3,3)=15
-    function setupAlmostSolvedBoard(IGame2D game) internal {
-        for (uint256 row = 0; row < 4; row++) {
-            for (uint256 col = 0; col < 4; col++) {
-                uint256 index = row * 4 + col;
-                uint256 value;
-                if (index == 14) value = 0;
-                else if (index == 15) value = 15;
-                else value = index + 1;
-                game.setCell2D(row, col, value);
-            }
-        }
-    }
-
     // =========================================================================
     // Board init and getBoard
     // =========================================================================
 
     function test_boardInitAndGetBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupWinningBoard(game);
+        IGame2D game = deployGame2D(validator, SOLVED_BOARD);
 
         assertEq(game.getBoard(0, 0), 1, "cell (0,0)");
         assertEq(game.getBoard(1, 2), 7, "cell (1,2)");
@@ -84,18 +61,14 @@ contract Game2DTest is Test {
 
     function test_solvedBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupWinningBoard(game);
+        IGame2D game = deployGame2D(validator, SOLVED_BOARD);
 
         assertTrue(game.isSolved(), "winning board should be solved");
     }
 
     function test_unsolvedBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
         assertFalse(game.isSolved(), "almost-solved board should not be solved");
     }
@@ -106,9 +79,7 @@ contract Game2DTest is Test {
 
     function test_moveAndSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
         // Move (3,3) into empty at (3,2) — adjacent
         game.moveField(3, 3);
@@ -118,9 +89,7 @@ contract Game2DTest is Test {
 
     function test_invalidMove() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
         // Move (0,0) — not adjacent to empty at (3,2)
         vm.expectRevert();
@@ -133,34 +102,10 @@ contract Game2DTest is Test {
 
     function test_moveFieldRequiresLock() public {
         address validator = deployDummyLockValidator(true);
-        IGame2D game = deployGame2D(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
         vm.expectRevert();
         game.moveField(3, 3);
-    }
-
-    // =========================================================================
-    // SetCell2D edge cases
-    // =========================================================================
-
-    function test_setCellAlreadyInitialized() public {
-        address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupWinningBoard(game);
-
-        vm.expectRevert();
-        game.setCell2D(0, 0, 99);
-    }
-
-    function test_setCellInvalidIndex() public {
-        address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        vm.expectRevert();
-        game.setCell2D(4, 0, 1);
     }
 
     // =========================================================================
@@ -169,9 +114,7 @@ contract Game2DTest is Test {
 
     function test_moveFieldInvalidIndex() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        setupWinningBoard(game);
+        IGame2D game = deployGame2D(validator, SOLVED_BOARD);
 
         vm.expectRevert();
         game.moveField(4, 0);
@@ -183,9 +126,7 @@ contract Game2DTest is Test {
 
     function test_moveFieldWithRealRegistry() public {
         IBountyRegistry registry = deployRegistry(address(this), 0);
-        IGame2D game = deployGame2D(address(registry));
-
-        setupAlmostSolvedBoard(game);
+        IGame2D game = deployGame2D(address(registry), UNSOLVABLE_BOARD);
 
         // Register the game as a challenge (required for locking)
         registry.registerChallenge(address(game), 0);
@@ -209,27 +150,14 @@ contract Game2DTest is Test {
 
     function test_multipleMovesToSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator);
-
-        // Board: [1..13, 0, 14, 15] — empty at (3,1)
-        for (uint256 row = 0; row < 4; row++) {
-            for (uint256 col = 0; col < 4; col++) {
-                uint256 index = row * 4 + col;
-                uint256 value;
-                if (index == 13) value = 0;
-                else if (index == 14) value = 14;
-                else if (index == 15) value = 15;
-                else value = index + 1;
-                game.setCell2D(row, col, value);
-            }
-        }
+        IGame2D game = deployGame2D(validator, TWO_MOVES_BOARD);
 
         assertFalse(game.isSolved(), "should not be solved initially");
 
-        // Move 1: move (3,2) value=14 into empty at (3,1)
+        // Move (3,2) value=14 into empty at (3,1)
         game.moveField(3, 2);
 
-        // Move 2: move (3,3) value=15 into empty at (3,2)
+        // Move (3,3) value=15 into empty at (3,2)
         game.moveField(3, 3);
 
         assertTrue(game.isSolved(), "board should be solved after 2 moves");

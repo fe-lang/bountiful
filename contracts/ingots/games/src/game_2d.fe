@@ -13,6 +13,9 @@ use std::evm::{Address, Ctx, Call, Evm, assert, revert}
 use shared::{
     Error,
     winning_value,
+    unpack_board,
+    SOLVED_BOARD,
+    UNSOLVABLE_BOARD,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -28,21 +31,24 @@ pub msg Game2DMsg {
     IsSolved -> bool,
     #[selector = sol("moveField(uint256,uint256)")]
     MoveField { row: u256, col: u256 },
-    #[selector = sol("setCell2D(uint256,uint256,uint256)")]
-    SetCell2D { row: u256, col: u256, value: u256 },
 }
 
 struct Game2DStore {
     lock_validator: Address,
-    initialized: bool,
     board: [[u256; 4]; 4],
 }
 
 pub contract Game2D uses (ctx: Ctx, call: mut Call) {
     mut store: Game2DStore
 
-    init(lock_validator: Address) uses (mut store) {
+    init(lock_validator: Address, packed_board: u256) uses (mut store) {
         store.lock_validator = lock_validator
+        let board = unpack_board(packed_board)
+        let mut i: usize = 0
+        while i < 16 {
+            store.board[i / 4][i % 4] = board[i]
+            i += 1
+        }
     }
 
     recv Game2DMsg {
@@ -63,19 +69,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
                 row += 1
             }
             return true
-        }
-
-        SetCell2D { row, col, value } uses (mut store) {
-            if store.initialized {
-                revert(Error::AlreadyInitialized)
-            }
-            if row > 3 || col > 3 {
-                revert(Error::InvalidIndex)
-            }
-            store.board[row as usize][col as usize] = value
-            if row == 3 && col == 3 {
-                store.initialized = true
-            }
         }
 
         MoveField { row, col } uses (mut store, ctx, mut call) {
@@ -121,23 +114,12 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
 // Tests
 // =============================================================================
 
+const TWO_MOVES_BOARD: u256 = 0xFE0DCBA987654321
+
 #[test]
 fn test_2d_solved() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 200)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 201)
-
-    // Set solved board row by row: [1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,0]
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 15 { 0 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 200)
+    let game = evm.create2<Game2D>(value: 0, args: (v, SOLVED_BOARD), salt: 201)
 
     let v00: u256 = evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::GetBoard { row: 0, col: 0 })
     assert(v00 == 1)
@@ -150,21 +132,8 @@ fn test_2d_solved() uses (evm: mut Evm) {
 
 #[test]
 fn test_2d_move_and_solve() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 210)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 211)
-
-    // Board: solved except last two swapped — (3,2)=0, (3,3)=15
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 14 { 0 } else if index == 15 { 15 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 210)
+    let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 211)
 
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
 
@@ -174,21 +143,8 @@ fn test_2d_move_and_solve() uses (evm: mut Evm) {
 
 #[test]
 fn test_2d_unsolved() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 220)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 221)
-
-    // Board: almost solved — (3,2)=0, (3,3)=15
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 14 { 0 } else if index == 15 { 15 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 220)
+    let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 221)
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
     assert(!solved)
@@ -196,116 +152,37 @@ fn test_2d_unsolved() uses (evm: mut Evm) {
 
 #[test(should_revert)]
 fn test_2d_invalid_move() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 222)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 223)
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 222)
+    let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 223)
 
-    // Board: almost solved — empty at (3,2)
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 14 { 0 } else if index == 15 { 15 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
-
-    // Move (0,0) — not adjacent to empty at (3,2)
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 0, col: 0 })
 }
 
 #[test(should_revert)]
 fn test_2d_move_without_lock() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 224)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 225)
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 224)
+    let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 225)
 
-    // Minimal board setup
-    evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row: 0, col: 0, value: 1 })
-    evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row: 3, col: 3, value: 0 })
-
-    evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 0, col: 0 })
-}
-
-#[test(should_revert)]
-fn test_2d_set_cell_already_initialized() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 226)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 227)
-
-    // Initialize full board (setting (3,3) sets initialized = 1)
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 15 { 0 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
-
-    // Try to set cell again — should revert
-    evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row: 0, col: 0, value: 99 })
-}
-
-#[test(should_revert)]
-fn test_2d_set_cell_invalid_index() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 228)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 229)
-
-    // SetCell2D with row > 3 — should revert
-    evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row: 4, col: 0, value: 1 })
+    evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
 }
 
 #[test(should_revert)]
 fn test_2d_move_field_invalid_index() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 230)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 231)
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 230)
+    let game = evm.create2<Game2D>(value: 0, args: (v, SOLVED_BOARD), salt: 231)
 
-    // Initialize board
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 15 { 0 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
-
-    // MoveField with row > 3 — should revert
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 4, col: 0 })
 }
 
 #[test]
 fn test_2d_multiple_moves() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 232)
-    let game = evm.create2<Game2D>(value: 0, args: (validator,), salt: 233)
-
-    // Board: [1..13, 0, 14, 15] — empty at (3,1) i.e. index 13
-    let mut row: u256 = 0
-    while row < 4 {
-        let mut col: u256 = 0
-        while col < 4 {
-            let index = row * 4 + col
-            let value = if index == 13 { 0 } else if index == 14 { 14 } else if index == 15 { 15 } else { index + 1 }
-            evm.call(addr: game, gas: 100000, value: 0, message: Game2DMsg::SetCell2D { row, col, value })
-            col += 1
-        }
-        row += 1
-    }
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 232)
+    let game = evm.create2<Game2D>(value: 0, args: (v, TWO_MOVES_BOARD), salt: 233)
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})
     assert(!solved)
 
-    // Move 1: move (3,2) i.e. value 14 into empty at (3,1) — adjacent
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 2 })
-
-    // Move 2: move (3,3) i.e. value 15 into empty at (3,2) — adjacent
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: Game2DMsg::IsSolved {})

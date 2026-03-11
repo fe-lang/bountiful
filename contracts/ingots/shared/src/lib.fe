@@ -132,6 +132,41 @@ pub fn winning_value(index: u256) -> u256 {
 }
 
 // =============================================================================
+// Board packing — 16 cells × 4 bits = 64 bits packed into a single u256
+//
+// Cell 0 at bits 0..3, cell 1 at bits 4..7, ..., cell 15 at bits 60..63.
+// Each cell value must be 0..15.
+// =============================================================================
+
+/// Solved board: [1,2,3,...,15,0] packed
+pub const SOLVED_BOARD: u256 = 0x0FEDCBA987654321
+
+/// Unsolvable board: [1,2,3,...,14,0,15] packed
+pub const UNSOLVABLE_BOARD: u256 = 0xF0EDCBA987654321
+
+/// Unpacks a packed board into a 16-element array.
+pub fn unpack_board(packed: u256) -> [u256; 16] {
+    let mut board: [u256; 16] = [0; 16]
+    let mut i: usize = 0
+    while i < 16 {
+        board[i] = (packed >> ((i as u256) * 4)) & 0xF
+        i += 1
+    }
+    return board
+}
+
+/// Packs a 16-element array into a single u256.
+pub fn pack_board(board: [u256; 16]) -> u256 {
+    let mut packed: u256 = 0
+    let mut i: usize = 0
+    while i < 16 {
+        packed = packed | (board[i] << ((i as u256) * 4))
+        i += 1
+    }
+    return packed
+}
+
+// =============================================================================
 // Cross-contract message interfaces
 // =============================================================================
 
@@ -229,6 +264,37 @@ fn test_lock_word_repr_empty() uses (evm: mut Evm) {
     let lock2 = Lock::from_word(word)
     assert(lock2.claimer == Address::zero())
     assert(lock2.valid_until_block == 0)
+}
+
+#[test]
+fn test_unpack_board_solved() uses (evm: mut Evm) {
+    let board = unpack_board(SOLVED_BOARD)
+    let mut i: usize = 0
+    while i < 16 {
+        assert(board[i] == winning_value(i as u256))
+        i += 1
+    }
+}
+
+#[test]
+fn test_unpack_board_unsolvable() uses (evm: mut Evm) {
+    let board = unpack_board(UNSOLVABLE_BOARD)
+    // Cells 0-13: values 1-14
+    let mut i: usize = 0
+    while i < 14 {
+        assert(board[i] == (i as u256) + 1)
+        i += 1
+    }
+    // Cell 14 = 0 (empty), cell 15 = 15
+    assert(board[14] == 0)
+    assert(board[15] == 15)
+}
+
+#[test]
+fn test_pack_unpack_roundtrip() uses (evm: mut Evm) {
+    let board = unpack_board(UNSOLVABLE_BOARD)
+    let repacked = pack_board(board)
+    assert(repacked == UNSOLVABLE_BOARD)
 }
 
 #[test]

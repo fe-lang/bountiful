@@ -9,7 +9,6 @@ interface IGameBitboard {
     function getBoard(uint256 index) external view returns (uint256);
     function isSolved() external view returns (bool);
     function moveField(uint256 index) external;
-    function setCell(uint256 index, uint256 value) external;
 }
 
 contract GameBitboardTest is Test {
@@ -17,9 +16,14 @@ contract GameBitboardTest is Test {
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
 
-    function deployGameBitboard(address lockValidator) internal returns (IGameBitboard) {
+    // Packed board constants (4 bits per cell, cell 0 at bits 0..3)
+    uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
+    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    uint256 constant TWO_MOVES_BOARD = 0xFE0DCBA987654321;
+
+    function deployGameBitboard(address lockValidator, uint256 packedBoard) internal returns (IGameBitboard) {
         address addr = FeDeployer.deployFeWithArgs(
-            vm, GAME_BITBOARD_BIN, abi.encode(lockValidator)
+            vm, GAME_BITBOARD_BIN, abi.encode(lockValidator, packedBoard)
         );
         return IGameBitboard(addr);
     }
@@ -37,30 +41,13 @@ contract GameBitboardTest is Test {
         return IBountyRegistry(addr);
     }
 
-    function setupWinningBoard(IGameBitboard game) internal {
-        for (uint256 i = 0; i < 15; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(15, 0);
-    }
-
-    function setupAlmostSolvedBoard(IGameBitboard game) internal {
-        for (uint256 i = 0; i < 14; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(14, 0);
-        game.setCell(15, 15);
-    }
-
     // =========================================================================
     // Board init and getBoard
     // =========================================================================
 
     function test_boardInitAndGetBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupWinningBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, SOLVED_BOARD);
 
         assertEq(game.getBoard(0), 1, "cell 0");
         assertEq(game.getBoard(7), 8, "cell 7");
@@ -74,18 +61,14 @@ contract GameBitboardTest is Test {
 
     function test_solvedBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupWinningBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, SOLVED_BOARD);
 
         assertTrue(game.isSolved(), "winning board should be solved");
     }
 
     function test_unsolvedBoard() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, UNSOLVABLE_BOARD);
 
         assertFalse(game.isSolved(), "almost-solved board should not be solved");
     }
@@ -96,9 +79,7 @@ contract GameBitboardTest is Test {
 
     function test_moveAndSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, UNSOLVABLE_BOARD);
 
         game.moveField(15);
 
@@ -107,9 +88,7 @@ contract GameBitboardTest is Test {
 
     function test_invalidMove() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, UNSOLVABLE_BOARD);
 
         // Move index 0 — not adjacent to empty at 14
         vm.expectRevert();
@@ -122,34 +101,10 @@ contract GameBitboardTest is Test {
 
     function test_moveFieldRequiresLock() public {
         address validator = deployDummyLockValidator(true);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupAlmostSolvedBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, UNSOLVABLE_BOARD);
 
         vm.expectRevert();
         game.moveField(15);
-    }
-
-    // =========================================================================
-    // SetCell edge cases
-    // =========================================================================
-
-    function test_setCellAlreadyInitialized() public {
-        address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupWinningBoard(game);
-
-        vm.expectRevert();
-        game.setCell(0, 99);
-    }
-
-    function test_setCellInvalidIndex() public {
-        address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        vm.expectRevert();
-        game.setCell(16, 1);
     }
 
     // =========================================================================
@@ -158,9 +113,7 @@ contract GameBitboardTest is Test {
 
     function test_moveFieldInvalidIndex() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        setupWinningBoard(game);
+        IGameBitboard game = deployGameBitboard(validator, SOLVED_BOARD);
 
         vm.expectRevert();
         game.moveField(16);
@@ -172,9 +125,7 @@ contract GameBitboardTest is Test {
 
     function test_moveFieldWithRealRegistry() public {
         IBountyRegistry registry = deployRegistry(address(this), 0);
-        IGameBitboard game = deployGameBitboard(address(registry));
-
-        setupAlmostSolvedBoard(game);
+        IGameBitboard game = deployGameBitboard(address(registry), UNSOLVABLE_BOARD);
 
         // Register the game as a challenge (required for locking)
         registry.registerChallenge(address(game), 0);
@@ -196,15 +147,7 @@ contract GameBitboardTest is Test {
 
     function test_multipleMovesToSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGameBitboard game = deployGameBitboard(validator);
-
-        // Board: [1..13, 0, 14, 15] — empty at 13
-        for (uint256 i = 0; i < 13; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(13, 0);
-        game.setCell(14, 14);
-        game.setCell(15, 15);
+        IGameBitboard game = deployGameBitboard(validator, TWO_MOVES_BOARD);
 
         assertFalse(game.isSolved(), "should not be solved initially");
 
