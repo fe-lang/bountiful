@@ -465,7 +465,8 @@ ol li::before {
   }
 
   .c64-screen {
-    padding: 12px;
+    padding: 8px;
+    overflow-x: hidden;
   }
 
   .c64-grid {
@@ -475,6 +476,8 @@ ol li::before {
 
   .c64-quadrant {
     overflow-y: visible;
+    overflow-x: hidden;
+    padding: 12px 8px;
   }
 
   html {
@@ -483,5 +486,23 @@ ol li::before {
 
   .puzzle-board {
     max-width: 260px;
+  }
+
+  .contract-entry {
+    flex-wrap: wrap;
+  }
+
+  .contract-value {
+    width: 100%;
+    flex: unset;
+  }
+
+  .c64-table td:first-child {
+    padding-right: 8px;
+  }
+
+  .c64-footer {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }
