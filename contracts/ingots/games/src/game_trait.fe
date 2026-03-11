@@ -1,0 +1,268 @@
+// =============================================================================
+// GameTrait — 15-puzzle using traits, enum with data, struct methods
+//
+// Board stored as [u256; 16] fixed array. Cell values are wrapped in a Cell
+// enum with Occupied(u256) and Empty variants. A Pos struct implements the
+// Indexable trait. Move validation uses struct methods and match on enum data.
+//
+// Fe features exercised: trait definition and impl, enum with data variants,
+// match with data extraction, struct methods, trait method calls, [u256; 16]
+// fixed array in storage.
+// =============================================================================
+
+use std::abi::sol
+use std::evm::{Address, Ctx, Call, Evm, assert, revert}
+use shared::{
+    Error,
+    winning_value,
+    unpack_board,
+    SOLVED_BOARD,
+    UNSOLVABLE_BOARD,
+    LockValidatorMsg,
+}
+use shared::dummy_lock_validator::DummyLockValidator
+
+// =============================================================================
+// Trait: Indexable — anything that can be converted to a flat board index
+// =============================================================================
+
+trait Indexable {
+    fn to_flat_index(self) -> u256
+}
+
+// =============================================================================
+// Struct: Pos — a (row, col) position on the 4x4 board
+// =============================================================================
+
+struct Pos {
+    row: u256,
+    col: u256,
+}
+
+impl Indexable for Pos {
+    fn to_flat_index(self) -> u256 {
+        self.row * 4 + self.col
+    }
+}
+
+impl Pos {
+    fn from_flat(index: u256) -> Pos {
+        Pos { row: index / 4, col: index % 4 }
+    }
+
+    fn is_adjacent_to(self, other: Pos) -> bool {
+        let row_diff = if self.row > other.row { self.row - other.row } else { other.row - self.row }
+        let col_diff = if self.col > other.col { self.col - other.col } else { other.col - self.col }
+        (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
+    }
+
+    fn is_valid(self) -> bool {
+        self.row < 4 && self.col < 4
+    }
+}
+
+// =============================================================================
+// Enum: Cell — a board cell is either Empty or Occupied with a tile value
+// =============================================================================
+
+enum Cell {
+    Empty,
+    Occupied(u256),
+}
+
+impl Cell {
+    fn from_value(val: u256) -> Cell {
+        if val == 0 {
+            return Cell::Empty
+        }
+        return Cell::Occupied(val)
+    }
+
+    fn to_value(self) -> u256 {
+        match self {
+            Cell::Empty => 0
+            Cell::Occupied(v) => v
+        }
+    }
+
+    fn is_empty(self) -> bool {
+        match self {
+            Cell::Empty => true
+            Cell::Occupied(_) => false
+        }
+    }
+}
+
+// =============================================================================
+// Contract
+// =============================================================================
+
+pub msg GameTraitMsg {
+    #[selector = sol("getBoard(uint256)")]
+    GetBoard { index: u256 } -> u256,
+    #[selector = sol("isSolved()")]
+    IsSolved -> bool,
+    #[selector = sol("moveField(uint256)")]
+    MoveField { index: u256 },
+}
+
+struct GameTraitStore {
+    lock_validator: Address,
+    board: [u256; 16],
+}
+
+pub contract GameTrait uses (ctx: Ctx, call: mut Call) {
+    mut store: GameTraitStore
+
+    init(lock_validator: Address, packed_board: u256) uses (mut store) {
+        store.lock_validator = lock_validator
+        let board = unpack_board(packed_board)
+        let mut i: usize = 0
+        while i < 16 {
+            store.board[i] = board[i]
+            i += 1
+        }
+    }
+
+    recv GameTraitMsg {
+        GetBoard { index } -> u256 uses (store) {
+            let pos = Pos::from_flat(index)
+            if !pos.is_valid() {
+                revert(Error::InvalidIndex)
+            }
+            let cell = Cell::from_value(store.board[pos.to_flat_index() as usize])
+            cell.to_value()
+        }
+
+        IsSolved -> bool uses (store) {
+            let mut i: u256 = 0
+            while i < 16 {
+                let cell = Cell::from_value(store.board[i as usize])
+                let expected = Cell::from_value(winning_value(i))
+                if cell.to_value() != expected.to_value() {
+                    return false
+                }
+                i += 1
+            }
+            return true
+        }
+
+        MoveField { index } uses (mut store, ctx, mut call) {
+            store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() })
+
+            let move_pos = Pos::from_flat(index)
+            if !move_pos.is_valid() {
+                revert(Error::InvalidIndex)
+            }
+
+            // Find the empty cell
+            let mut empty_pos = Pos { row: 4, col: 4 }
+            let mut j: u256 = 0
+            while j < 16 {
+                let cell = Cell::from_value(store.board[j as usize])
+                if cell.is_empty() {
+                    empty_pos = Pos::from_flat(j)
+                }
+                j += 1
+            }
+
+            // Check adjacency using Pos method
+            if !move_pos.is_adjacent_to(empty_pos) {
+                revert(Error::NotMovable)
+            }
+
+            // Swap: read tile via Cell enum, write back via to_value()
+            let move_idx = move_pos.to_flat_index() as usize
+            let empty_idx = empty_pos.to_flat_index() as usize
+            let tile = Cell::from_value(store.board[move_idx])
+
+            match tile {
+                Cell::Occupied(val) => {
+                    store.board[move_idx] = Cell::Empty.to_value()
+                    store.board[empty_idx] = Cell::Occupied(val).to_value()
+                }
+                Cell::Empty => {
+                    revert(Error::NotMovable)
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+const TWO_MOVES_BOARD: u256 = 0xFE0DCBA987654321
+
+#[test]
+fn test_trait_solved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 400)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, SOLVED_BOARD), salt: 401)
+
+    let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameTraitMsg::GetBoard { index: 0 })
+    assert(v0 == 1)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameTraitMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test]
+fn test_trait_unsolved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 410)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 411)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameTraitMsg::IsSolved {})
+    assert(!solved)
+}
+
+#[test]
+fn test_trait_move_and_solve() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 420)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 421)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameTraitMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test(should_revert)]
+fn test_trait_invalid_move() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 430)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 431)
+
+    // Move index 0 — not adjacent to empty at 14
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 0 })
+}
+
+#[test(should_revert)]
+fn test_trait_move_without_lock() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 440)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 441)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 15 })
+}
+
+#[test(should_revert)]
+fn test_trait_move_field_invalid_index() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 450)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, SOLVED_BOARD), salt: 451)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 16 })
+}
+
+#[test]
+fn test_trait_multiple_moves() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 460)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, TWO_MOVES_BOARD), salt: 461)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameTraitMsg::IsSolved {})
+    assert(!solved)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 14 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameTraitMsg::IsSolved {})
+    assert(solved)
+}

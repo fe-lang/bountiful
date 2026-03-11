@@ -11,6 +11,7 @@ contract Deploy is Script {
     string constant GAME_2D_BIN = "contracts/out/Game2D.bin";
     string constant GAME_ENUM_BIN = "contracts/out/GameEnum.bin";
     string constant GAME_BITBOARD_BIN = "contracts/out/GameBitboard.bin";
+    string constant GAME_TRAIT_BIN = "contracts/out/GameTrait.bin";
 
     // Packed board: [1,2,...,14,0,15] — one move from solved
     uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
@@ -62,6 +63,13 @@ contract Deploy is Script {
         registry.registerChallenge(gameBitboardAddr, prizeAmount);
         console.log("GameBitboard:", gameBitboardAddr);
 
+        // 6. Deploy GameTrait (trait variant)
+        address gameTraitAddr = FeDeployer.deployFeWithArgs(
+            vm, GAME_TRAIT_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
+        );
+        registry.registerChallenge(gameTraitAddr, prizeAmount);
+        console.log("GameTrait:", gameTraitAddr);
+
         vm.stopBroadcast();
 
         // Write deployment manifest
@@ -70,7 +78,8 @@ contract Deploy is Script {
         vm.serializeAddress(json, "Game", gameAddr);
         vm.serializeAddress(json, "Game2D", game2dAddr);
         vm.serializeAddress(json, "GameEnum", gameEnumAddr);
-        string memory output = vm.serializeAddress(json, "GameBitboard", gameBitboardAddr);
+        vm.serializeAddress(json, "GameBitboard", gameBitboardAddr);
+        string memory output = vm.serializeAddress(json, "GameTrait", gameTraitAddr);
 
         string memory path = string.concat(
             "deployments/",
@@ -89,5 +98,6 @@ contract Deploy is Script {
         console.log("Game2D:       ", game2dAddr);
         console.log("GameEnum:     ", gameEnumAddr);
         console.log("GameBitboard: ", gameBitboardAddr);
+        console.log("GameTrait:    ", gameTraitAddr);
     }
 }
