@@ -22,8 +22,31 @@ test-forge: build
 deploy: build
 	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast
 
+# Pick the best deployment manifest and copy to web/ for Zola
+prepare-web:
+	@best=""; \
+	for f in deployments/1_*.json; do \
+		[ -f "$$f" ] || continue; \
+		block=$$(echo "$$f" | sed 's/.*_//; s/\.json//'); \
+		if [ -z "$$best" ] || [ "$$block" -gt "$$best_block" ]; then \
+			best="$$f"; best_block="$$block"; \
+		fi; \
+	done; \
+	if [ -z "$$best" ]; then \
+		best=$$(ls deployments/*.json 2>/dev/null | head -1); \
+	fi; \
+	if [ -n "$$best" ]; then \
+		chain=$$(basename "$$best" | sed 's/_.*//' ); \
+		cp "$$best" web/deployment.json; \
+		sed -i "1s/{/{\"_chainId\": $$chain,/" web/deployment.json; \
+		echo "Using deployment manifest: $$best (chain $$chain)"; \
+	else \
+		echo '{}' > web/deployment.json; \
+		echo "Warning: no deployment manifest found"; \
+	fi
+
 # Generate Fe documentation (docs.json, fe-web.js, index.html)
-docs:
+docs: prepare-web
 	cd contracts && fe doc -o ../web/static/api json
 	cd contracts && fe doc -o ../web/static/api bundle
 	cd contracts && fe doc -o ../web/static/api static
