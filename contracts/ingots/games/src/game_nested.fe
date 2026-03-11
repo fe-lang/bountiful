@@ -1,0 +1,249 @@
+// =============================================================================
+// GameNested — 15-puzzle using deeply nested structs in storage
+//
+// Board stored as Board { rows: [Row; 4] } where Row { cells: [u256; 4] }.
+// All board access goes through struct methods: board.get(row, col),
+// board.rows[r].get(col), etc.
+//
+// Fe features exercised: nested structs in storage, struct methods calling
+// struct methods, nested array access through structs, struct construction.
+// =============================================================================
+
+use std::abi::sol
+use std::evm::{Address, Ctx, Call, Evm, assert, revert}
+use shared::{
+    Error,
+    winning_value,
+    unpack_board,
+    SOLVED_BOARD,
+    UNSOLVABLE_BOARD,
+    LockValidatorMsg,
+}
+use shared::dummy_lock_validator::DummyLockValidator
+
+// =============================================================================
+// Nested structs: Row and Board
+// =============================================================================
+
+struct Row {
+    pub cells: [u256; 4],
+}
+
+impl Row {
+    fn get(self, col: usize) -> u256 {
+        self.cells[col]
+    }
+
+    fn has_value(self, val: u256) -> bool {
+        let mut c: usize = 0
+        while c < 4 {
+            if self.cells[c] == val {
+                return true
+            }
+            c += 1
+        }
+        return false
+    }
+}
+
+struct Board {
+    pub rows: [Row; 4],
+}
+
+impl Board {
+    fn get(self, row: usize, col: usize) -> u256 {
+        self.rows[row].get(col)
+    }
+
+    fn winning_cell(row: usize, col: usize) -> u256 {
+        winning_value((row * 4 + col) as u256)
+    }
+
+    fn is_solved(self) -> bool {
+        let mut r: usize = 0
+        while r < 4 {
+            let mut c: usize = 0
+            while c < 4 {
+                if self.get(r, c) != Board::winning_cell(r, c) {
+                    return false
+                }
+                c += 1
+            }
+            r += 1
+        }
+        return true
+    }
+
+    fn find_empty(self) -> (usize, usize) {
+        let mut er: usize = 4
+        let mut ec: usize = 4
+        let mut r: usize = 0
+        while r < 4 {
+            if self.rows[r].has_value(0) {
+                let mut c: usize = 0
+                while c < 4 {
+                    if self.rows[r].get(c) == 0 {
+                        er = r
+                        ec = c
+                    }
+                    c += 1
+                }
+            }
+            r += 1
+        }
+        return (er, ec)
+    }
+}
+
+// =============================================================================
+// Contract
+// =============================================================================
+
+pub msg GameNestedMsg {
+    #[selector = sol("getBoard(uint256)")]
+    GetBoard { index: u256 } -> u256,
+    #[selector = sol("isSolved()")]
+    IsSolved -> bool,
+    #[selector = sol("moveField(uint256)")]
+    MoveField { index: u256 },
+}
+
+struct GameNestedStore {
+    lock_validator: Address,
+    board: Board,
+}
+
+pub contract GameNested uses (ctx: Ctx, call: mut Call) {
+    mut store: GameNestedStore
+
+    init(lock_validator: Address, packed_board: u256) uses (mut store) {
+        store.lock_validator = lock_validator
+        let cells = unpack_board(packed_board)
+        let mut i: usize = 0
+        while i < 16 {
+            let row = i / 4
+            let col = i % 4
+            store.board.rows[row].cells[col] = cells[i]
+            i += 1
+        }
+    }
+
+    recv GameNestedMsg {
+        GetBoard { index } -> u256 uses (store) {
+            if index > 15 {
+                revert(Error::InvalidIndex)
+            }
+            let row = (index / 4) as usize
+            let col = (index % 4) as usize
+            store.board.get(row, col)
+        }
+
+        IsSolved -> bool uses (store) {
+            store.board.is_solved()
+        }
+
+        MoveField { index } uses (mut store, ctx, mut call) {
+            store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() })
+
+            if index > 15 {
+                revert(Error::InvalidIndex)
+            }
+
+            let move_row = (index / 4) as usize
+            let move_col = (index % 4) as usize
+
+            // Find empty cell using Board method
+            let (empty_row, empty_col) = store.board.find_empty()
+
+            // Check adjacency
+            let row_diff = if move_row > empty_row { move_row - empty_row } else { empty_row - move_row }
+            let col_diff = if move_col > empty_col { move_col - empty_col } else { empty_col - move_col }
+            let is_adjacent = (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
+            if !is_adjacent {
+                revert(Error::NotMovable)
+            }
+
+            // Swap through nested struct access
+            let val = store.board.rows[move_row].cells[move_col]
+            store.board.rows[move_row].cells[move_col] = 0
+            store.board.rows[empty_row].cells[empty_col] = val
+        }
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+const TWO_MOVES_BOARD: u256 = 0xFE0DCBA987654321
+
+#[test]
+fn test_nested_solved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 500)
+    let game = evm.create2<GameNested>(value: 0, args: (v, SOLVED_BOARD), salt: 501)
+
+    let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameNestedMsg::GetBoard { index: 0 })
+    assert(v0 == 1)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameNestedMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test]
+fn test_nested_unsolved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 510)
+    let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 511)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameNestedMsg::IsSolved {})
+    assert(!solved)
+}
+
+#[test]
+fn test_nested_move_and_solve() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 520)
+    let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 521)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameNestedMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test(should_revert)]
+fn test_nested_invalid_move() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 530)
+    let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 531)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 0 })
+}
+
+#[test(should_revert)]
+fn test_nested_move_without_lock() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 540)
+    let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 541)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 15 })
+}
+
+#[test(should_revert)]
+fn test_nested_move_field_invalid_index() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 550)
+    let game = evm.create2<GameNested>(value: 0, args: (v, SOLVED_BOARD), salt: 551)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 16 })
+}
+
+#[test]
+fn test_nested_multiple_moves() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 560)
+    let game = evm.create2<GameNested>(value: 0, args: (v, TWO_MOVES_BOARD), salt: 561)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameNestedMsg::IsSolved {})
+    assert(!solved)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 14 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameNestedMsg::IsSolved {})
+    assert(solved)
+}

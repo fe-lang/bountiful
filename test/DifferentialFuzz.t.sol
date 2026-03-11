@@ -22,6 +22,7 @@ contract DifferentialFuzzTest is Test {
     string constant GAME_ENUM_BIN = "contracts/out/GameEnum.bin";
     string constant GAME_BITBOARD_BIN = "contracts/out/GameBitboard.bin";
     string constant GAME_TRAIT_BIN = "contracts/out/GameTrait.bin";
+    string constant GAME_NESTED_BIN = "contracts/out/GameNested.bin";
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
 
     uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
@@ -33,6 +34,7 @@ contract DifferentialFuzzTest is Test {
         address gameEnum;
         address gameBitboard;
         address gameTrait;
+        address gameNested;
     }
 
     function testFuzz_differentialMoveSequence(uint256 seed, bytes memory actions) public {
@@ -51,6 +53,7 @@ contract DifferentialFuzzTest is Test {
             (bool enumOk,) = games.gameEnum.call(abi.encodeWithSelector(IGame1D.moveField.selector, rawIndex));
             (bool bitboardOk,) = games.gameBitboard.call(abi.encodeWithSelector(IGame1D.moveField.selector, rawIndex));
             (bool traitOk,) = games.gameTrait.call(abi.encodeWithSelector(IGame1D.moveField.selector, rawIndex));
+            (bool nestedOk,) = games.gameNested.call(abi.encodeWithSelector(IGame1D.moveField.selector, rawIndex));
 
             uint256 row = rawIndex / 4;
             uint256 col = rawIndex % 4;
@@ -61,6 +64,7 @@ contract DifferentialFuzzTest is Test {
             assertEq(enumOk, expectedOk, "GameEnum move result diverged from reference");
             assertEq(bitboardOk, expectedOk, "GameBitboard move result diverged from reference");
             assertEq(traitOk, expectedOk, "GameTrait move result diverged from reference");
+            assertEq(nestedOk, expectedOk, "GameNested move result diverged from reference");
 
             if (expectedOk) {
                 referenceBoard = nextBoard;
@@ -90,6 +94,9 @@ contract DifferentialFuzzTest is Test {
         games.gameTrait = FeDeployer.deployFeWithArgs(
             vm, GAME_TRAIT_BIN, abi.encode(validator, packedBoard)
         );
+        games.gameNested = FeDeployer.deployFeWithArgs(
+            vm, GAME_NESTED_BIN, abi.encode(validator, packedBoard)
+        );
     }
 
     function assertStateMatchesReference(Games memory games, uint256 expectedBoard) internal view {
@@ -98,12 +105,14 @@ contract DifferentialFuzzTest is Test {
         uint256 enumBoard = snapshot1D(games.gameEnum);
         uint256 bitboardBoard = snapshot1D(games.gameBitboard);
         uint256 traitBoard = snapshot1D(games.gameTrait);
+        uint256 nestedBoard = snapshot1D(games.gameNested);
 
         assertEq(gameBoard, expectedBoard, "Game board diverged from reference");
         assertEq(game2dBoard, expectedBoard, "Game2D board diverged from reference");
         assertEq(enumBoard, expectedBoard, "GameEnum board diverged from reference");
         assertEq(bitboardBoard, expectedBoard, "GameBitboard board diverged from reference");
         assertEq(traitBoard, expectedBoard, "GameTrait board diverged from reference");
+        assertEq(nestedBoard, expectedBoard, "GameNested board diverged from reference");
 
         bool expectedSolved = expectedBoard == SOLVED_BOARD;
         assertEq(readSolved1D(games.game), expectedSolved, "Game isSolved diverged from reference");
@@ -111,6 +120,7 @@ contract DifferentialFuzzTest is Test {
         assertEq(readSolved1D(games.gameEnum), expectedSolved, "GameEnum isSolved diverged from reference");
         assertEq(readSolved1D(games.gameBitboard), expectedSolved, "GameBitboard isSolved diverged from reference");
         assertEq(readSolved1D(games.gameTrait), expectedSolved, "GameTrait isSolved diverged from reference");
+        assertEq(readSolved1D(games.gameNested), expectedSolved, "GameNested isSolved diverged from reference");
     }
 
     function snapshot1D(address target) internal view returns (uint256 packedBoard) {

@@ -5,3 +5,4 @@ use ingot::game_2d
 use ingot::game_bitboard
 use ingot::game_enum
 use ingot::game_trait
+use ingot::game_nested
