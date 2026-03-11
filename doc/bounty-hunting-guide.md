@@ -50,6 +50,14 @@ There are four game variants, each exercising different Fe features. All impleme
 | `GameEnum` | `[u256; 16]` + enums | Enums, match, struct methods |
 | `GameBitboard` | single `u256` | Bitwise ops, bitpacking |
 
+### Design Philosophy & Attack Surface
+
+**Important Note:** These contracts are **not written for efficiency or gas optimization.** On the contrary, they are intentionally designed to maximize the "surface area" of the Fe language features they exercise.
+
+For example, `Game.fe` searches for the empty cell (`0`) across the entire board every time `moveField` is called, instead of simply storing its index. This is done to force the compiler to repeatedly handle storage maps and loop iterations, increasing the chance of exposing a bug in those subsystems.
+
+As a bounty hunter, you should look for exploits in these "inefficient" patterns, as they are specifically chosen to stress-test the Fe compiler's type system, storage management, and code generation.
+
 Each game contract exposes these messages (Solidity ABI):
 
 | Function | Description |
@@ -57,7 +65,10 @@ Each game contract exposes these messages (Solidity ABI):
 | `getBoard(uint256 index) -> uint256` | Read the value at a board position (0-15) |
 | `isSolved() -> bool` | Returns `true` if the board is in the winning state |
 | `moveField(uint256 index)` | Slide the tile at `index` into the adjacent empty cell. Reverts on error |
-| `setCell(uint256 index, uint256 value)` | One-time board initialization (locked after all 16 cells are set). Reverts on error |
+
+The board is initialized via the constructor with a packed `u256` (4 bits per cell). There is no external `setCell` function.
+
+Note: `Game2D` uses `moveField(uint256 row, uint256 col)` and `getBoard(uint256 row, uint256 col)` instead of a single index.
 
 **Important:** `moveField` requires that you hold a valid lock on the challenge (see Step 4). The game contract calls back to the registry via `validateOwnsLock(owner, challenge)` to verify this. If the lock validation fails, the transaction reverts.
 
@@ -86,12 +97,14 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {ISolvable} from "../src/interfaces/ISolvable.sol";
 
 interface IGame {
-    function setCell(uint256 index, uint256 value) external;
     function moveField(uint256 index) external;
     function getBoard(uint256 index) external view returns (uint256);
 }
 
 contract ExploitTest is Test {
+    // Unsolvable board: [1,2,...,14,0,15] packed as 4 bits per cell
+    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+
     function test_exploit() public {
         // Deploy a DummyLockValidator that never reverts (lock always valid)
         address validator = FeDeployer.deployFeWithArgs(
@@ -104,16 +117,9 @@ contract ExploitTest is Test {
         address gameAddr = FeDeployer.deployFeWithArgs(
             vm,
             "contracts/out/Game.bin",  // or Game2D, GameEnum, GameBitboard
-            abi.encode(validator)
+            abi.encode(validator, UNSOLVABLE_BOARD)
         );
         IGame game = IGame(gameAddr);
-
-        // Initialize the unsolvable board: [1,2,...,14,0,15]
-        for (uint256 i = 0; i < 14; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(14, 0);  // empty cell
-        game.setCell(15, 15); // tile 15
 
         // Verify not solved
         assertFalse(ISolvable(gameAddr).isSolved());

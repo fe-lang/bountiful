@@ -15,6 +15,16 @@ Four different implementations of the [15 puzzle game](https://15puzzle.netlify.
 
 All game contracts implement the `ISolvable` interface (`isSolved() -> bool`).
 
+## Design philosophy
+
+Unlike typical production smart contracts, Bountiful's challenges are **intentionally not optimized for efficiency or gas usage**. Instead, they are designed to:
+
+1.  **Maximize attack surface:** Use a wide variety of Fe language features (enums, nested arrays, bitpacking, storage maps, etc.) to expose potential compiler bugs.
+2.  **Increase complexity:** Implement logic in ways that exercise different parts of the Fe type system and code generation (e.g., searching for the empty cell on every move instead of storing its index).
+3.  **Encourage exploration:** Provide multiple paths (arithmetic, storage, control flow) for hunters to find exploits.
+
+The goal is to provide a "stress test" for the Fe compiler across various idiomatic and non-idiomatic coding patterns.
+
 ## Tech stack
 
 - **Contracts**: [Fe](https://fe-lang.org/) (primary) + Solidity (interfaces, deployment, tests)
@@ -101,4 +111,3 @@ The admin can register new challenge contracts or remove existing ones (when unl
 
 - **[Bounty Hunting Guide](doc/bounty-hunting-guide.md)** — Step-by-step walkthrough for finding exploits and claiming prizes
 - **[AGENTS.md](AGENTS.md)** — Structured reference for AI agents hunting bounties
--

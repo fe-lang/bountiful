@@ -21,7 +21,6 @@ pub enum Error {
     AlreadyLocked,
     InvalidClaim,
     OnlyAdmin,
-    AlreadyInitialized,
     InvalidDeposit,
     TransferFailed,
     AlreadyRegistered,
@@ -36,10 +35,9 @@ impl Error {
             Self::AlreadyLocked => 4
             Self::InvalidClaim => 5
             Self::OnlyAdmin => 6
-            Self::AlreadyInitialized => 7
-            Self::InvalidDeposit => 8
-            Self::TransferFailed => 9
-            Self::AlreadyRegistered => 10
+            Self::InvalidDeposit => 7
+            Self::TransferFailed => 8
+            Self::AlreadyRegistered => 9
         }
     }
 }
@@ -192,10 +190,9 @@ fn test_error_to_int_all_variants() uses (evm: mut Evm) {
     assert(Error::AlreadyLocked.to_int() == 4)
     assert(Error::InvalidClaim.to_int() == 5)
     assert(Error::OnlyAdmin.to_int() == 6)
-    assert(Error::AlreadyInitialized.to_int() == 7)
-    assert(Error::InvalidDeposit.to_int() == 8)
-    assert(Error::TransferFailed.to_int() == 9)
-    assert(Error::AlreadyRegistered.to_int() == 10)
+    assert(Error::InvalidDeposit.to_int() == 7)
+    assert(Error::TransferFailed.to_int() == 8)
+    assert(Error::AlreadyRegistered.to_int() == 9)
 }
 
 #[test]

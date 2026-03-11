@@ -52,12 +52,13 @@ The difference: tiles 14 and 15 are swapped, empty cell at index 14 instead of 1
 getBoard(uint256 index) -> uint256        // read cell value at index (0-15)
 isSolved() -> bool                        // true if board matches winning state
 moveField(uint256 index)                  // slide tile into adjacent empty cell (reverts on error)
-setCell(uint256 index, uint256 value)     // one-time init, locked after cell 15 is set (reverts on error)
 ```
+
+All game contracts are initialized via constructor with `abi.encode(lockValidator, packedBoard)`. The board is packed into a single `u256` (4 bits per cell, cell 0 at bits 0..3, cell 15 at bits 60..63).
 
 `moveField` requires a valid lock. For local testing, deploy a `DummyLockValidator` with `abi.encode(false)` (no revert).
 
-Note: `Game2D` uses `moveField(uint256 row, uint256 col)` and `setCell2D(uint256 row, uint256 col, uint256 value)` instead of a single index.
+Note: `Game2D` uses `moveField(uint256 row, uint256 col)` and `getBoard(uint256 row, uint256 col)` instead of a single index.
 
 ## Error handling
 
@@ -71,9 +72,9 @@ All contract functions revert on error. Errors are defined in `contracts/ingots/
 | `AlreadyLocked` | Challenge is already locked by someone else |
 | `InvalidClaim` | Challenge is not registered, not open, or not solved |
 | `OnlyAdmin` | Only the admin can call this function |
-| `AlreadyInitialized` | Board has already been initialized via `setCell` |
 | `InvalidDeposit` | Lock deposit amount is insufficient |
 | `TransferFailed` | ETH transfer failed |
+| `AlreadyRegistered` | Challenge is already registered |
 
 ## Exploit test template
 
@@ -88,30 +89,25 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {ISolvable} from "../src/interfaces/ISolvable.sol";
 
 interface IGame {
-    function setCell(uint256 index, uint256 value) external;
     function moveField(uint256 index) external;
     function getBoard(uint256 index) external view returns (uint256);
 }
 
 contract ExploitTest is Test {
+    // Unsolvable board: [1,2,...,14,0,15] packed as 4 bits per cell
+    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+
     function test_exploit() public {
         // DummyLockValidator with false = never reverts (lock always valid)
         address validator = FeDeployer.deployFeWithArgs(
             vm, "contracts/out/DummyLockValidator.bin", abi.encode(false)
         );
 
-        // Deploy target (swap bin path for other variants)
+        // Deploy target with unsolvable board (swap bin path for other variants)
         address gameAddr = FeDeployer.deployFeWithArgs(
-            vm, "contracts/out/Game.bin", abi.encode(validator)
+            vm, "contracts/out/Game.bin", abi.encode(validator, UNSOLVABLE_BOARD)
         );
         IGame game = IGame(gameAddr);
-
-        // Initialize unsolvable board: [1,2,...,14,0,15]
-        for (uint256 i = 0; i < 14; i++) {
-            game.setCell(i, i + 1);
-        }
-        game.setCell(14, 0);
-        game.setCell(15, 15);
 
         assertFalse(ISolvable(gameAddr).isSolved());
 
