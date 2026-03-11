@@ -1,15 +1,18 @@
-use ingot::LockValidatorMsg
+use std::evm::revert
+use ingot::{Error, LockValidatorMsg}
 
 pub contract DummyLockValidator {
-    mut lock_result: u256,
+    mut should_revert: bool,
 
-    init(result: u256) uses (mut lock_result) {
-        lock_result = result
+    init(should_revert: bool) uses (mut should_revert) {
+        should_revert = should_revert
     }
 
     recv LockValidatorMsg {
-        ValidateOwnsLock { owner, challenge } -> u256 uses (lock_result) {
-            lock_result
+        ValidateOwnsLock { owner, challenge } uses (should_revert) {
+            if should_revert {
+                revert(Error::MissingLock)
+            }
         }
     }
 }

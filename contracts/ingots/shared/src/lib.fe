@@ -8,6 +8,7 @@
 use std::abi::sol
 use std::evm::{Address, Evm, assert}
 use std::evm::word::WordRepr
+use core::abi::{Abi, AbiEncoder, AbiSize, Encode}
 
 // =============================================================================
 // Error enum
@@ -36,6 +37,16 @@ impl Error {
             Self::AlreadyInitialized => 7
             Self::InvalidDeposit => 8
         }
+    }
+}
+
+impl AbiSize for Error {
+    const ENCODED_SIZE: u256 = 32
+}
+
+impl<A: Abi> Encode<A> for Error {
+    fn encode<E: AbiEncoder<A>>(own self, _ e: mut E) {
+        e.write_word(self.to_int())
     }
 }
 
@@ -127,7 +138,7 @@ pub msg SolvableMsg {
 
 pub msg LockValidatorMsg {
     #[selector = sol("validateOwnsLock(address,address)")]
-    ValidateOwnsLock { owner: Address, challenge: Address } -> u256,
+    ValidateOwnsLock { owner: Address, challenge: Address },
 }
 
 // =============================================================================

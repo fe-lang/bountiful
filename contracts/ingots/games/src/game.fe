@@ -3,7 +3,7 @@
 // =============================================================================
 
 use std::abi::sol
-use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert}
+use std::evm::{Address, Ctx, Call, StorageMap, Evm, assert, revert}
 use shared::{
     Error,
     winning_value,
@@ -18,9 +18,9 @@ pub msg GameMsg {
     #[selector = sol("isSolved()")]
     IsSolved -> bool,
     #[selector = sol("moveField(uint256)")]
-    MoveField { index: u256 } -> u256,
+    MoveField { index: u256 },
     #[selector = sol("setCell(uint256,uint256)")]
-    SetCell { index: u256, value: u256 } -> u256,
+    SetCell { index: u256, value: u256 },
 }
 
 struct GameStore {
@@ -71,33 +71,24 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
             return true
         }
 
-        SetCell { index, value } -> u256 uses (mut store) {
+        SetCell { index, value } uses (mut store) {
             if store.initialized != 0 {
-                return Error::AlreadyInitialized.to_int()
+                revert(Error::AlreadyInitialized)
             }
             if index > 15 {
-                return Error::InvalidIndex.to_int()
+                revert(Error::InvalidIndex)
             }
             store.board.set(key: index, value)
             if index == 15 {
                 store.initialized = 1
             }
-            return 0
         }
 
-        MoveField { index } -> u256 uses (mut store, ctx, mut call) {
-            let lock_result: u256 = call.call(
-                addr: store.lock_validator,
-                gas: 100000,
-                value: 0,
-                message: LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() }
-            )
-            if lock_result != 0 {
-                return Error::MissingLock.to_int()
-            }
+        MoveField { index } uses (mut store, ctx, mut call) {
+            store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() })
 
             if index > 15 {
-                return Error::InvalidIndex.to_int()
+                revert(Error::InvalidIndex)
             }
 
             let mut empty_idx: u256 = 16
@@ -111,13 +102,12 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
             let encoded = store.moves.get(key: empty_idx)
             if !is_movable_to(encoded, index) {
-                return Error::NotMovable.to_int()
+                revert(Error::NotMovable)
             }
 
             let val = store.board.get(key: index)
             store.board.set(key: index, value: 0)
             store.board.set(key: empty_idx, value: val)
-            return 0
         }
     }
 }
@@ -128,7 +118,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
 #[test]
 fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 0)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 0)
     assert(validator.inner != 0)
 
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 1)
@@ -155,7 +145,7 @@ fn test_game_deploy_and_check_board() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_unsolved() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 10)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 10)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 11)
 
     // Board: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,0,15] — swapped last two
@@ -173,7 +163,7 @@ fn test_game_unsolved() uses (evm: mut Evm) {
 
 #[test]
 fn test_game_move_and_solve() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 20)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 20)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 21)
 
     // Board: [1..14, 0, 15] — empty at 14
@@ -185,16 +175,15 @@ fn test_game_move_and_solve() uses (evm: mut Evm) {
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 14, value: 0 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 15 })
 
-    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
-    assert(move_res == 0)
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
     assert(solved)
 }
 
-#[test]
+#[test(should_revert)]
 fn test_game_invalid_move() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 30)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 30)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 31)
 
     // Board: [1..14, 0, 15]
@@ -207,29 +196,25 @@ fn test_game_invalid_move() uses (evm: mut Evm) {
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 15 })
 
     // Move index 0 — not adjacent to empty at 14
-    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
-    assert(move_res == Error::NotMovable.to_int())
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
 }
 
-#[test]
+#[test(should_revert)]
 fn test_game_move_without_lock() uses (evm: mut Evm) {
-    // DummyLockValidator returns Error::MissingLock — simulates no lock
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (Error::MissingLock.to_int(),), salt: 40)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 40)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 41)
 
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 0, value: 1 })
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
 
-    let move_res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
-    assert(move_res == Error::MissingLock.to_int())
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
 }
 
-#[test]
+#[test(should_revert)]
 fn test_game_set_cell_already_initialized() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 42)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 42)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 43)
 
-    // Initialize full board (setCell index 15 sets initialized = 1)
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -237,27 +222,23 @@ fn test_game_set_cell_already_initialized() uses (evm: mut Evm) {
     }
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
 
-    // Try to set cell again — should fail
-    let res: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 0, value: 99 })
-    assert(res == Error::AlreadyInitialized.to_int())
+    // Try to set cell again — should revert
+    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 0, value: 99 })
 }
 
-#[test]
+#[test(should_revert)]
 fn test_game_set_cell_invalid_index() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 44)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 44)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 45)
 
-    // SetCell with index > 15 — should fail
-    let res: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 16, value: 1 })
-    assert(res == Error::InvalidIndex.to_int())
+    evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 16, value: 1 })
 }
 
-#[test]
+#[test(should_revert)]
 fn test_game_move_field_invalid_index() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 46)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 46)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 47)
 
-    // Initialize board
     let mut i: u256 = 0
     while i < 15 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -265,18 +246,15 @@ fn test_game_move_field_invalid_index() uses (evm: mut Evm) {
     }
     evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: 15, value: 0 })
 
-    // MoveField with index > 15 — should fail
-    let res: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 16 })
-    assert(res == Error::InvalidIndex.to_int())
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 16 })
 }
 
 #[test]
 fn test_game_multiple_moves() uses (evm: mut Evm) {
-    let validator = evm.create2<DummyLockValidator>(value: 0, args: (0,), salt: 48)
+    let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 48)
     let game = evm.create2<Game>(value: 0, args: (validator,), salt: 49)
 
     // Board: [1,2,3,4,5,6,7,8,9,10,11,12,13,0,14,15] — empty at 13
-    // Need two moves: move 14 (idx 14) into empty at 13, then move 15 (idx 15) into empty at 14
     let mut i: u256 = 0
     while i < 13 {
         evm.call(addr: game, gas: 100000, value: 0, message: GameMsg::SetCell { index: i, value: i + 1 })
@@ -290,13 +268,10 @@ fn test_game_multiple_moves() uses (evm: mut Evm) {
     assert(!solved)
 
     // Move 1: move cell 14 (index 14) into empty at 13 (adjacent: 13 neighbors are 9,12,14)
-    let res1: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 14 })
-    assert(res1 == 0)
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 14 })
 
-    // Board is now: [1..13, 14, 0, 15] — empty at 14
     // Move 2: move cell 15 (index 15) into empty at 14 (adjacent: 14 neighbors are 10,13,15)
-    let res2: u256 = evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
-    assert(res2 == 0)
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
 
     let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMsg::IsSolved {})
     assert(solved)
