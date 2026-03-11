@@ -98,9 +98,13 @@ impl RegistryStore {
     }
 
     /// Registers a new challenge with a prize amount. Admin only.
+    /// Fails if the challenge is already registered (prevents overwriting prize amounts).
     pub fn register_challenge(mut self, challenge: Address, prize_amount: u128) -> Result<Error, ()> uses (ctx: Ctx) {
         if ctx.caller() != self.admin {
             return Err(Error::OnlyAdmin)
+        }
+        if self.challenges.get(key: challenge).is_open {
+            return Err(Error::AlreadyRegistered)
         }
         self.challenges.set(key: challenge, value: Challenge::new(is_open: true, prize_amount))
         Ok(())
@@ -539,27 +543,22 @@ fn test_registry_remove_never_registered() uses (evm: mut Evm) {
     assert(!is_open)
 }
 
-#[test]
+#[test(should_revert)]
 fn test_registry_double_register() uses (evm: mut Evm) {
     let admin = evm.address()
     let registry = evm.create2<BountyRegistry>(value: 0, args: (admin, 0), salt: 84)
     let challenge = Address { inner: 12345 }
 
-    // Register twice — should succeed (idempotent)
+    // First register succeeds
     evm.call(
         addr: registry, gas: 100000, value: 0,
         message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 }
     )
+    // Second register should revert (already registered)
     evm.call(
         addr: registry, gas: 100000, value: 0,
         message: RegistryMsg::RegisterChallenge { challenge, prize_amount: 0 }
     )
-
-    let is_open: bool = evm.call(
-        addr: registry, gas: 100000, value: 0,
-        message: RegistryMsg::IsOpenChallenge { challenge }
-    )
-    assert(is_open)
 }
 
 #[test(should_revert)]

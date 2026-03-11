@@ -391,9 +391,9 @@ contract BountyRegistryTest is Test {
         IBountyRegistry registry = deployRegistry(0);
 
         registry.registerChallenge(address(0x1234), 0);
-        registry.registerChallenge(address(0x1234), 0);
 
-        assertTrue(registry.isOpenChallenge(address(0x1234)), "should still be open");
+        vm.expectRevert();
+        registry.registerChallenge(address(0x1234), 0);
     }
 
     function test_claimAlreadyClaimed() public {

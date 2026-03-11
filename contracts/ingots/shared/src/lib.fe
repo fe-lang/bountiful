@@ -24,6 +24,7 @@ pub enum Error {
     AlreadyInitialized,
     InvalidDeposit,
     TransferFailed,
+    AlreadyRegistered,
 }
 
 impl Error {
@@ -38,6 +39,7 @@ impl Error {
             Self::AlreadyInitialized => 7
             Self::InvalidDeposit => 8
             Self::TransferFailed => 9
+            Self::AlreadyRegistered => 10
         }
     }
 }
@@ -158,6 +160,7 @@ fn test_error_to_int_all_variants() uses (evm: mut Evm) {
     assert(Error::AlreadyInitialized.to_int() == 7)
     assert(Error::InvalidDeposit.to_int() == 8)
     assert(Error::TransferFailed.to_int() == 9)
+    assert(Error::AlreadyRegistered.to_int() == 10)
 }
 
 #[test]
