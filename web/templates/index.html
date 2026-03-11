@@ -132,6 +132,17 @@
           </div>
         </td>
       </tr>
+      {% set gamemonadic_addr = deploy.GameMonadic | default(value="NOT DEPLOYED") %}
+      <tr>
+        <td>GAME MONADIC</td>
+        <td>
+          <div class="contract-entry">
+            <span class="contract-value">{{ gamemonadic_addr }}</span>
+            <button type="button" class="copy-contract-btn" data-copy-value="{{ gamemonadic_addr }}" aria-label="Copy game monadic contract address">COPY ADDRESS</button>
+            <button type="button" class="source-btn" data-symbol="games::game_monadic::GameMonadic" aria-label="View game monadic source">SHOW SOURCE</button>
+          </div>
+        </td>
+      </tr>
       {% set chain_id = deploy._chainId | default(value=0) %}
       {% if chain_id == 1 %}
         {% set network_name = "ETHEREUM MAINNET" %}

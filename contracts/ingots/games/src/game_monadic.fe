@@ -1,0 +1,245 @@
+// =============================================================================
+// GameMonadic — 15-puzzle using monadic Result chains (Fn trait, map, and_then)
+//
+// Like GameBitboard, the board is packed into a single u256 (4 bits per cell).
+// The distinguishing feature is that moveField chains operations monadically
+// using Result<E, T>.map(F{}) and Result<E, T>.and_then(F{}) where F is a
+// struct implementing the core::functional::Fn trait. The final result is
+// consumed via .unwrap_or_revert() which reverts the EVM transaction on error.
+//
+// Fe features exercised: Fn trait on structs, .map() and .and_then() on Result,
+// .unwrap_or_revert(), monadic control flow, bitwise board packing.
+// =============================================================================
+
+use std::abi::sol
+use std::evm::{Address, Ctx, Call, Evm, assert, revert}
+use core::result::Result::{self, Ok, Err}
+use core::functional::Fn
+use shared::{
+    Error,
+    SOLVED_BOARD,
+    UNSOLVABLE_BOARD,
+    LockValidatorMsg,
+}
+use shared::game_util::{ADJACENCY, is_movable_to}
+use shared::dummy_lock_validator::DummyLockValidator
+
+// =============================================================================
+// Bit-packed board helpers
+// =============================================================================
+
+fn get_cell(board: u256, index: u256) -> u256 {
+    (board >> (index * 4)) & 0xF
+}
+
+fn set_cell(board: u256, index: u256, value: u256) -> u256 {
+    let shift = index * 4
+    let mask = ~(0xF << shift)
+    (board & mask) | (value << shift)
+}
+
+fn winning_board() -> u256 {
+    let mut board: u256 = 0
+    let mut i: u256 = 0
+    while i < 15 {
+        board = set_cell(board, i, i + 1)
+        i += 1
+    }
+    return board
+}
+
+// =============================================================================
+// MoveCtx — threaded through the functional chain
+// =============================================================================
+
+struct MoveCtx {
+    pub board: u256,
+    pub move_idx: u256,
+    pub empty_idx: u256,
+}
+
+// =============================================================================
+// Fn-trait structs for each pipeline step
+// =============================================================================
+
+// FindEmpty: scans the board for the empty cell (value 0) and records its index
+struct FindEmpty {}
+impl Fn<MoveCtx, Result<Error, MoveCtx>> for FindEmpty {
+    fn call(self, _ ctx: own MoveCtx) -> Result<Error, MoveCtx> {
+        let mut empty: u256 = 16
+        let mut i: u256 = 0
+        while i < 16 {
+            if get_cell(ctx.board, i) == 0 {
+                empty = i
+            }
+            i += 1
+        }
+        if empty > 15 {
+            Err(Error::NotMovable)
+        } else {
+            Ok(MoveCtx { board: ctx.board, move_idx: ctx.move_idx, empty_idx: empty })
+        }
+    }
+}
+
+// CheckAdjacent: validates that move_idx is adjacent to empty_idx
+struct CheckAdjacent {}
+impl Fn<MoveCtx, Result<Error, MoveCtx>> for CheckAdjacent {
+    fn call(self, _ ctx: own MoveCtx) -> Result<Error, MoveCtx> {
+        let encoded: u256 = ADJACENCY[ctx.empty_idx as usize]
+        if is_movable_to(encoded, ctx.move_idx) {
+            Ok(ctx)
+        } else {
+            Err(Error::NotMovable)
+        }
+    }
+}
+
+// DoSwap: swaps the tile at move_idx with the empty cell, returns new board
+struct DoSwap {}
+impl Fn<MoveCtx, u256> for DoSwap {
+    fn call(self, _ ctx: own MoveCtx) -> u256 {
+        let val: u256 = get_cell(ctx.board, ctx.move_idx)
+        let b: u256 = set_cell(ctx.board, ctx.move_idx, 0)
+        set_cell(b, ctx.empty_idx, val)
+    }
+}
+
+// =============================================================================
+// Entry point: validate index and build initial context
+// =============================================================================
+
+fn validate_move(board: u256, index: u256) -> Result<Error, MoveCtx> {
+    if index > 15 {
+        Err(Error::InvalidIndex)
+    } else {
+        Ok(MoveCtx { board, move_idx: index, empty_idx: 0 })
+    }
+}
+
+// =============================================================================
+// Contract
+// =============================================================================
+
+pub msg GameMonadicMsg {
+    #[selector = sol("getBoard(uint256)")]
+    GetBoard { index: u256 } -> u256,
+    #[selector = sol("isSolved()")]
+    IsSolved -> bool,
+    #[selector = sol("moveField(uint256)")]
+    MoveField { index: u256 },
+}
+
+struct GameMonadicStore {
+    lock_validator: Address,
+    board: u256,
+}
+
+pub contract GameMonadic uses (ctx: Ctx, call: mut Call) {
+    mut store: GameMonadicStore
+
+    init(lock_validator: Address, packed_board: u256) uses (mut store) {
+        store.lock_validator = lock_validator
+        store.board = packed_board
+    }
+
+    recv GameMonadicMsg {
+        GetBoard { index } -> u256 uses (store) {
+            get_cell(store.board, index)
+        }
+
+        IsSolved -> bool uses (store) {
+            store.board == winning_board()
+        }
+
+        MoveField { index } uses (mut store, ctx, mut call) {
+            store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() })
+
+            // Functional pipeline: validate → find empty → check adjacent → swap
+            store.board = validate_move(store.board, index)
+                .and_then(FindEmpty{})
+                .and_then(CheckAdjacent{})
+                .map(DoSwap{})
+                .unwrap_or_revert()
+        }
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+const TWO_MOVES_BOARD: u256 = 0xFE0DCBA987654321
+
+#[test]
+fn test_monadic_solved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 200)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, SOLVED_BOARD), salt: 201)
+
+    let v0: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameMonadicMsg::GetBoard { index: 0 })
+    assert(v0 == 1)
+    let v14: u256 = evm.call(addr: game, gas: 100000, value: 0, message: GameMonadicMsg::GetBoard { index: 14 })
+    assert(v14 == 15)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMonadicMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test]
+fn test_monadic_move_and_solve() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 210)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 211)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMonadicMsg::IsSolved {})
+    assert(solved)
+}
+
+#[test]
+fn test_monadic_unsolved() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 220)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 221)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMonadicMsg::IsSolved {})
+    assert(!solved)
+}
+
+#[test(should_revert)]
+fn test_monadic_invalid_move() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 222)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 223)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 0 })
+}
+
+#[test(should_revert)]
+fn test_monadic_move_without_lock() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 224)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 225)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 15 })
+}
+
+#[test(should_revert)]
+fn test_monadic_move_field_invalid_index() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 230)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, SOLVED_BOARD), salt: 231)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 16 })
+}
+
+#[test]
+fn test_monadic_multiple_moves() uses (evm: mut Evm) {
+    let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 232)
+    let game = evm.create2<GameMonadic>(value: 0, args: (v, TWO_MOVES_BOARD), salt: 233)
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMonadicMsg::IsSolved {})
+    assert(!solved)
+
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 14 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMonadicMsg::MoveField { index: 15 })
+
+    let solved: bool = evm.call(addr: game, gas: 200000, value: 0, message: GameMonadicMsg::IsSolved {})
+    assert(solved)
+}
