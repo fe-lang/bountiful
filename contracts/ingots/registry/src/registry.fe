@@ -134,8 +134,8 @@ impl RegistryStore {
         if !challenge.call(SolvableMsg::IsSolved {}) {
             return Err(Error::InvalidClaim)
         }
-        ops::call(ops::gas(), ctx.caller().inner, entry.prize_amount as u256, 0, 0, 0, 0)
         self.challenges.set(key: challenge, value: Challenge::closed())
+        ops::call(ops::gas(), ctx.caller().inner, entry.prize_amount as u256, 0, 0, 0, 0)
         Ok(())
     }
 
