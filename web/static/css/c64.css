@@ -12,7 +12,7 @@
   --fe-code-border: #7869C4;
   --fe-code-text: #C8BFE7;
   --fe-code-font: 'Press Start 2P', monospace;
-  --fe-code-size: 0.5rem;
+  --fe-code-size: 0.6rem;
   --fe-code-line-height: 1.8;
   --fe-code-line-number: #7869C4;
   --fe-hl-keyword: #c678dd;
@@ -97,7 +97,7 @@ body {
 }
 
 .c64-header p {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 
 /* Blinking cursor */
@@ -146,7 +146,7 @@ h3 {
 }
 
 p {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   margin-bottom: 8px;
 }
 
@@ -166,7 +166,7 @@ ol {
 }
 
 ol li {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   margin-bottom: 6px;
   counter-increment: steps;
 }
@@ -179,7 +179,7 @@ ol li::before {
 /* ── SRC BUTTON ── */
 .source-btn {
   font-family: var(--font);
-  font-size: 0.45rem;
+  font-size: 0.55rem;
   line-height: 1;
   color: var(--c64-bg);
   background: var(--c64-text);
@@ -211,14 +211,14 @@ ol li::before {
 }
 
 .source-viewer-hint {
-  font-size: 0.5rem;
+  font-size: 0.6rem;
   opacity: 0.6;
   text-align: center;
   margin-top: 2rem;
 }
 
 .source-viewer-label {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--c64-white);
   margin-bottom: 6px;
 }
@@ -245,7 +245,7 @@ ol li::before {
 
 .doc-sig {
   font-family: var(--font);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--c64-text);
   word-break: break-all;
 }
@@ -260,7 +260,7 @@ ol li::before {
 }
 
 .doc-desc {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   margin-top: 4px;
   margin-bottom: 0;
   opacity: 0.7;
@@ -277,7 +277,7 @@ ol li::before {
 
 .c64-footer a {
   font-family: var(--font);
-  font-size: 0.45rem;
+  font-size: 0.55rem;
   color: var(--c64-text);
   text-decoration: none;
 }
@@ -288,7 +288,7 @@ ol li::before {
 
 .c64-footer-credit {
   font-family: var(--font);
-  font-size: 0.45rem;
+  font-size: 0.55rem;
   color: var(--c64-border);
 }
 
@@ -298,7 +298,7 @@ ol li::before {
 }
 
 .more-info a {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--c64-white);
   text-decoration: none;
 }
@@ -315,7 +315,7 @@ ol li::before {
 }
 
 .c64-table td {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   padding: 6px 0;
   vertical-align: top;
 }
@@ -348,7 +348,7 @@ ol li::before {
 
 .copy-contract-btn {
   font-family: var(--font);
-  font-size: 0.45rem;
+  font-size: 0.55rem;
   line-height: 1;
   color: var(--c64-bg);
   background: var(--c64-text);
@@ -378,7 +378,7 @@ ol li::before {
 
 .c64-btn {
   font-family: var(--font);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--c64-bg);
   background: var(--c64-text);
   border: none;
@@ -402,7 +402,7 @@ ol li::before {
 .puzzle-status {
   display: flex;
   gap: 24px;
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   margin-bottom: 12px;
 }
 
@@ -448,7 +448,7 @@ ol li::before {
 
 .puzzle-hint {
   text-align: center;
-  font-size: 0.5rem;
+  font-size: 0.6rem;
   opacity: 0.6;
 }
 
