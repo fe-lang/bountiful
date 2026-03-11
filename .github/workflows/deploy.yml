@@ -13,6 +13,7 @@ concurrency:
 env:
   FE_VERSION: "26.0.0-alpha.9"
   ZOLA_VERSION: "0.19.2"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
@@ -65,4 +66,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
