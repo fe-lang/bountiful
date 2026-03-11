@@ -35,7 +35,7 @@ pub msg Game2DMsg {
 
 struct Game2DStore {
     lock_validator: Address,
-    initialized: u256,
+    initialized: bool,
     board: [[u256; 4]; 4],
 }
 
@@ -44,7 +44,6 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address) uses (mut store) {
         store.lock_validator = lock_validator
-        store.initialized = 0
     }
 
     recv Game2DMsg {
@@ -68,7 +67,7 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
         }
 
         SetCell2D { row, col, value } uses (mut store) {
-            if store.initialized != 0 {
+            if store.initialized {
                 revert(Error::AlreadyInitialized)
             }
             if row > 3 || col > 3 {
@@ -76,7 +75,7 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
             }
             store.board[row as usize][col as usize] = value
             if row == 3 && col == 3 {
-                store.initialized = 1
+                store.initialized = true
             }
         }
 

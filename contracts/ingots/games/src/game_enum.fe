@@ -75,7 +75,7 @@ pub msg GameEnumMsg {
 
 struct GameEnumStore {
     lock_validator: Address,
-    initialized: u256,
+    initialized: bool,
     board: [u256; 16],
 }
 
@@ -84,7 +84,6 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address) uses (mut store) {
         store.lock_validator = lock_validator
-        store.initialized = 0
     }
 
     recv GameEnumMsg {
@@ -104,7 +103,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
         }
 
         SetCell { index, value } uses (mut store) {
-            if store.initialized != 0 {
+            if store.initialized {
                 revert(Error::AlreadyInitialized)
             }
             if index > 15 {
@@ -112,7 +111,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
             }
             store.board[index as usize] = value
             if index == 15 {
-                store.initialized = 1
+                store.initialized = true
             }
         }
 

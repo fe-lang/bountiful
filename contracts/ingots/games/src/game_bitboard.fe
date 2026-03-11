@@ -51,7 +51,7 @@ pub msg GameBitboardMsg {
 
 struct GameBitboardStore {
     lock_validator: Address,
-    initialized: u256,
+    initialized: bool,
     board: u256,
     moves: StorageMap<u256, u256>,
 }
@@ -61,8 +61,6 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address) uses (mut store) {
         store.lock_validator = lock_validator
-        store.initialized = 0
-        store.board = 0
         store.moves.set(key: 0, value: encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE))
         store.moves.set(key: 1, value: encode_moves(0, 2, 5, INVALID_MOVE))
         store.moves.set(key: 2, value: encode_moves(1, 3, 6, INVALID_MOVE))
@@ -91,7 +89,7 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
         }
 
         SetCell { index, value } uses (mut store) {
-            if store.initialized != 0 {
+            if store.initialized {
                 revert(Error::AlreadyInitialized)
             }
             if index > 15 {
@@ -99,7 +97,7 @@ pub contract GameBitboard uses (ctx: Ctx, call: mut Call) {
             }
             store.board = set_cell(store.board, index, value)
             if index == 15 {
-                store.initialized = 1
+                store.initialized = true
             }
         }
 
