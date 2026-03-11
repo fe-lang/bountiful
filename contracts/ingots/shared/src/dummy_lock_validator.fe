@@ -4,8 +4,8 @@ use ingot::{Error, LockValidatorMsg}
 pub contract DummyLockValidator {
     mut should_revert: bool,
 
-    init(should_revert: bool) uses (mut should_revert) {
-        should_revert = should_revert
+    init(revert_on_validate: bool) uses (mut should_revert) {
+        should_revert = revert_on_validate
     }
 
     recv LockValidatorMsg {

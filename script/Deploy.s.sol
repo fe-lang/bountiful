@@ -6,7 +6,7 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 
 interface IGame {
-    function setCell(uint256 index, uint256 value) external returns (uint256);
+    function setCell(uint256 index, uint256 value) external;
 }
 
 contract Deploy is Script {
@@ -39,8 +39,7 @@ contract Deploy is Script {
 
         // 3. Register the game as a challenge with prize amount
         uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(1 ether)));
-        uint256 res = registry.registerChallenge(gameAddr, prizeAmount);
-        require(res == 0, "registerChallenge failed");
+        registry.registerChallenge(gameAddr, prizeAmount);
         console.log("Game registered with prize:", prizeAmount);
 
         // 4. Initialize the board: [1,2,...,14,0,15] — almost solved, one move away

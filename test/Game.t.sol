@@ -8,15 +8,11 @@ import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 interface IGame {
     function getBoard(uint256 index) external view returns (uint256);
     function isSolved() external view returns (bool);
-    function moveField(uint256 index) external returns (uint256);
-    function setCell(uint256 index, uint256 value) external returns (uint256);
+    function moveField(uint256 index) external;
+    function setCell(uint256 index, uint256 value) external;
 }
 
 contract GameTest is Test {
-    // Error codes from shared/src/lib.fe (Error enum, sequential)
-    uint256 constant ERR_NOT_MOVABLE = 2;
-    uint256 constant ERR_MISSING_LOCK = 3;
-
     string constant GAME_BIN = "contracts/out/Game.bin";
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
@@ -28,9 +24,9 @@ contract GameTest is Test {
         return IGame(addr);
     }
 
-    function deployDummyLockValidator(uint256 returnValue) internal returns (address) {
+    function deployDummyLockValidator(bool shouldRevert) internal returns (address) {
         return FeDeployer.deployFeWithArgs(
-            vm, DUMMY_LOCK_VALIDATOR_BIN, abi.encode(returnValue)
+            vm, DUMMY_LOCK_VALIDATOR_BIN, abi.encode(shouldRevert)
         );
     }
 
@@ -63,7 +59,7 @@ contract GameTest is Test {
     // =========================================================================
 
     function test_boardInitAndGetBoard() public {
-        address validator = deployDummyLockValidator(0);
+        address validator = deployDummyLockValidator(false);
         IGame game = deployGame(validator);
 
         setupWinningBoard(game);
@@ -79,7 +75,7 @@ contract GameTest is Test {
     // =========================================================================
 
     function test_solvedBoard() public {
-        address validator = deployDummyLockValidator(0);
+        address validator = deployDummyLockValidator(false);
         IGame game = deployGame(validator);
 
         setupWinningBoard(game);
@@ -88,7 +84,7 @@ contract GameTest is Test {
     }
 
     function test_unsolvedBoard() public {
-        address validator = deployDummyLockValidator(0);
+        address validator = deployDummyLockValidator(false);
         IGame game = deployGame(validator);
 
         setupAlmostSolvedBoard(game);
@@ -101,27 +97,26 @@ contract GameTest is Test {
     // =========================================================================
 
     function test_moveAndSolve() public {
-        address validator = deployDummyLockValidator(0); // allows moves
+        address validator = deployDummyLockValidator(false);
         IGame game = deployGame(validator);
 
         setupAlmostSolvedBoard(game);
 
         // Move 15 into the empty slot at 14 (they are adjacent)
-        uint256 res = game.moveField(15);
-        assertEq(res, 0, "valid move should succeed");
+        game.moveField(15);
 
         assertTrue(game.isSolved(), "board should be solved after move");
     }
 
     function test_invalidMove() public {
-        address validator = deployDummyLockValidator(0);
+        address validator = deployDummyLockValidator(false);
         IGame game = deployGame(validator);
 
         setupAlmostSolvedBoard(game);
 
         // Move index 0 — not adjacent to empty at 14
-        uint256 res = game.moveField(0);
-        assertEq(res, ERR_NOT_MOVABLE, "non-adjacent move should fail");
+        vm.expectRevert();
+        game.moveField(0);
     }
 
     // =========================================================================
@@ -129,14 +124,13 @@ contract GameTest is Test {
     // =========================================================================
 
     function test_moveFieldRequiresLock() public {
-        // DummyLockValidator returns ERR_MISSING_LOCK → simulates no lock
-        address validator = deployDummyLockValidator(ERR_MISSING_LOCK);
+        address validator = deployDummyLockValidator(true);
         IGame game = deployGame(validator);
 
         setupAlmostSolvedBoard(game);
 
-        uint256 res = game.moveField(15);
-        assertEq(res, ERR_MISSING_LOCK, "move without lock should fail");
+        vm.expectRevert();
+        game.moveField(15);
     }
 
     // =========================================================================
@@ -153,16 +147,14 @@ contract GameTest is Test {
         registry.registerChallenge(address(game), 0);
 
         // Without locking, move should fail
-        uint256 res = game.moveField(15);
-        assertEq(res, ERR_MISSING_LOCK, "move without registry lock should fail");
+        vm.expectRevert();
+        game.moveField(15);
 
         // Lock the challenge (per-challenge lock)
-        uint256 lockRes = registry.lock(address(game));
-        assertEq(lockRes, 0, "lock should succeed");
+        registry.lock(address(game));
 
         // Now move should succeed
-        res = game.moveField(15);
-        assertEq(res, 0, "move with registry lock should succeed");
+        game.moveField(15);
 
         assertTrue(game.isSolved(), "board solved after move");
     }

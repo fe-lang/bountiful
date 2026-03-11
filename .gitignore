@@ -5,3 +5,4 @@ contracts/out
 forge-out
 cache
 web/public
+web/static/api
