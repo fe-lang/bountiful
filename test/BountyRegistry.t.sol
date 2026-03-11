@@ -511,6 +511,68 @@ contract BountyRegistryTest is Test {
         assertFalse(registry.isOpenChallenge(game2), "game2 should be closed");
     }
 
+    // =========================================================================
+    // TransferFailed paths
+    // =========================================================================
+
+    function test_claimRevertsWhenReceiverRejects() public {
+        // Use a RevertingReceiver as the claimer — it rejects incoming ETH
+        RevertingReceiver receiver = new RevertingReceiver();
+        IBountyRegistry registry = deployRegistry(0);
+        address game = deployDummyGame(true); // solved
+
+        // Fund registry and register with a prize
+        vm.deal(address(registry), 10 ether);
+        registry.registerChallenge(game, uint128(3 ether));
+
+        // Lock as the reverting receiver
+        vm.prank(address(receiver));
+        registry.lock(game);
+
+        // Claim as the reverting receiver — ETH transfer should fail
+        vm.prank(address(receiver));
+        vm.expectRevert();
+        registry.claim(game);
+    }
+
+    function test_withdrawRevertsWhenAdminRejectsETH() public {
+        // Deploy registry with a RevertingReceiver as admin
+        RevertingReceiver revertingAdmin = new RevertingReceiver();
+        address registryAddr = FeDeployer.deployFeWithArgs(
+            vm, REGISTRY_BIN, abi.encode(address(revertingAdmin), uint256(0))
+        );
+        IBountyRegistry registry = IBountyRegistry(registryAddr);
+
+        // Fund registry
+        vm.deal(address(registry), 5 ether);
+
+        // Withdraw as reverting admin — ETH transfer should fail
+        vm.prank(address(revertingAdmin));
+        vm.expectRevert();
+        registry.withdraw();
+    }
+
+    function test_claimRevertsWhenRegistryUnderfunded() public {
+        IBountyRegistry registry = deployRegistry(0);
+        address game = deployDummyGame(true); // solved
+
+        // Register with 5 ETH prize but don't fund the registry
+        registry.registerChallenge(game, uint128(5 ether));
+
+        // Lock and claim
+        registry.lock(game);
+
+        vm.expectRevert();
+        registry.claim(game);
+    }
+
     // Allow receiving ETH (for claim/withdraw transfers back to this contract)
     receive() external payable {}
+}
+
+/// Helper contract that rejects all incoming ETH transfers
+contract RevertingReceiver {
+    receive() external payable {
+        revert("no ETH accepted");
+    }
 }
