@@ -238,3 +238,80 @@ The transaction succeeds and the prize is transferred to your address. The chall
 - **Don't broadcast your exploit** before acquiring a lock. Mempool watchers can front-run unprotected transactions.
 - **Your lock deposit is not refunded.** It stays in the registry contract. Only claim if you're confident the exploit works on-chain.
 - **Always run `make build`** before Forge tests to ensure you're testing against current Fe bytecode.
+
+## Command Line Cheat Sheet
+
+Set these variables first:
+```bash
+export RPC_URL="https://..."
+export REGISTRY="0x..."
+export CHALLENGE="0x..."
+export PLAYER="0x..."
+export PRIV_KEY="0x..."
+```
+
+### Registry Queries
+Check if a challenge is open:
+```bash
+cast call $REGISTRY "isOpenChallenge(address)(bool)" $CHALLENGE --rpc-url $RPC_URL
+```
+
+Check if a challenge is currently locked:
+```bash
+cast call $REGISTRY "isLocked(address)(bool)" $CHALLENGE --rpc-url $RPC_URL
+```
+
+Get the prize balance of the entire registry:
+```bash
+cast call $REGISTRY "getBalance()(uint256)" --rpc-url $RPC_URL
+```
+
+### Game Queries
+Check if the puzzle is solved:
+```bash
+cast call $CHALLENGE "isSolved()(bool)" --rpc-url $RPC_URL
+```
+
+Read a specific cell (0-15):
+```bash
+cast call $CHALLENGE "getBoard(uint256)(uint256)" 14 --rpc-url $RPC_URL
+```
+
+Read the entire board (helper loop):
+```bash
+for i in {0..15}; do 
+  echo -n "Cell $i: "
+  cast call $CHALLENGE "getBoard(uint256)(uint256)" $i --rpc-url $RPC_URL
+done
+```
+
+### Transactions
+Acquire a lock (needs 0.01 ETH deposit):
+```bash
+cast send $REGISTRY "lock(address)" $CHALLENGE \
+  --value 0.01ether --private-key $PRIV_KEY --rpc-url $RPC_URL
+```
+
+Move a tile (only if you hold the lock):
+```bash
+cast send $CHALLENGE "moveField(uint256)" 14 \
+  --private-key $PRIV_KEY --rpc-url $RPC_URL
+```
+
+Claim the prize (after solving the puzzle):
+```bash
+cast send $REGISTRY "claim(address)" $CHALLENGE \
+  --private-key $PRIV_KEY --rpc-url $RPC_URL
+```
+
+### Useful Tools
+Convert a decimal error code from a revert to its name:
+```bash
+# Example: 4 -> AlreadyLocked
+# See shared/src/lib.fe for the full enum mapping
+```
+
+Decode raw return data:
+```bash
+cast --decode "isSolved()(bool)" 0x0000000000000000000000000000000000000000000000000000000000000001
+```
