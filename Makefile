@@ -27,6 +27,7 @@ docs:
 	cd contracts && fe doc -o ../web/static/api json
 	cd contracts && fe doc -o ../web/static/api bundle
 	cd contracts && fe doc -o ../web/static/api static
+	sed -i 's/Fe Docs/Bountiful Docs/g; s/Fe Documentation/Bountiful Documentation/g' web/static/api/index.html
 
 # Remove all build artifacts
 clean:
