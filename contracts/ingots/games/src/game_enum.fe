@@ -13,6 +13,7 @@ use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert, revert}
 use shared::{
     Error,
+    winning_value,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -58,8 +59,7 @@ impl Point {
 }
 
 fn winning_value_enum(index: usize) -> u256 {
-    if index == 15 { return 0 }
-    return (index + 1) as u256
+    winning_value(index as u256)
 }
 
 pub msg GameEnumMsg {

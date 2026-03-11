@@ -12,14 +12,13 @@ use std::abi::sol
 use std::evm::{Address, Ctx, Call, Evm, assert, revert}
 use shared::{
     Error,
+    winning_value,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
 
 fn winning_value_2d(row: usize, col: usize) -> u256 {
-    let index = row * 4 + col
-    if index == 15 { return 0 }
-    return (index + 1) as u256
+    winning_value((row * 4 + col) as u256)
 }
 
 pub msg Game2DMsg {
