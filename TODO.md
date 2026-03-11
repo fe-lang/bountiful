@@ -1,6 +1,0 @@
-- Games and registry should have good test coverage
-- Lock needs ETH
-- How do we test the time based unlock?
-- General front running scheme
-- Foundry deployment
-- Can we do foundry E2E tests?
