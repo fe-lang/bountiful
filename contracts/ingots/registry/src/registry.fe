@@ -135,7 +135,13 @@ impl RegistryStore {
             return Err(Error::InvalidClaim)
         }
         self.challenges.set(key: challenge, value: Challenge::closed())
-        ops::call(ops::gas(), ctx.caller().inner, entry.prize_amount as u256, 0, 0, 0, 0)
+        let amount = entry.prize_amount as u256
+        if amount > 0 {
+            let success = ops::call(ops::gas(), ctx.caller().inner, amount, 0, 0, 0, 0)
+            if success == 0 {
+                return Err(Error::TransferFailed)
+            }
+        }
         Ok(())
     }
 
@@ -157,7 +163,13 @@ impl RegistryStore {
         if self.lock_store.is_any_active() {
             return Err(Error::AlreadyLocked)
         }
-        ops::call(ops::gas(), ctx.caller().inner, ops::selfbalance(), 0, 0, 0, 0)
+        let balance = ops::selfbalance()
+        if balance > 0 {
+            let success = ops::call(ops::gas(), ctx.caller().inner, balance, 0, 0, 0, 0)
+            if success == 0 {
+                return Err(Error::TransferFailed)
+            }
+        }
         Ok(())
     }
 }

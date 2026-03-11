@@ -23,6 +23,7 @@ pub enum Error {
     OnlyAdmin,
     AlreadyInitialized,
     InvalidDeposit,
+    TransferFailed,
 }
 
 impl Error {
@@ -36,6 +37,7 @@ impl Error {
             Self::OnlyAdmin => 6
             Self::AlreadyInitialized => 7
             Self::InvalidDeposit => 8
+            Self::TransferFailed => 9
         }
     }
 }
@@ -155,6 +157,7 @@ fn test_error_to_int_all_variants() uses (evm: mut Evm) {
     assert(Error::OnlyAdmin.to_int() == 6)
     assert(Error::AlreadyInitialized.to_int() == 7)
     assert(Error::InvalidDeposit.to_int() == 8)
+    assert(Error::TransferFailed.to_int() == 9)
 }
 
 #[test]
