@@ -19,8 +19,9 @@ Where `_` is the empty cell (value `0`) at index 15.
 
 ## Prerequisites
 
-- [Fe 26.0.0-alpha.8](https://fe-lang.org/) installed
+- [Fe compiler](https://fe-lang.org/) installed (must support `revert()` and `EvmResultExt` — build from source if needed)
 - [Foundry](https://book.getfoundry.sh/) installed (`forge`, `cast`)
+- GNU Make
 - An Ethereum wallet with ETH on mainnet (for the lock deposit and gas)
 - An Ethereum mainnet RPC endpoint
 
@@ -29,14 +30,13 @@ Where `_` is the empty cell (value `0`) at index 15.
 ```bash
 git clone https://github.com/cburgdorf/bountiful.git
 cd bountiful
-cd contracts && fe build && cd ..
-forge build
+make build
 ```
 
 Verify everything works:
 
 ```bash
-forge test
+make test
 ```
 
 ## Step 2: Understand the contracts
@@ -56,10 +56,10 @@ Each game contract exposes these messages (Solidity ABI):
 |---|---|
 | `getBoard(uint256 index) -> uint256` | Read the value at a board position (0-15) |
 | `isSolved() -> bool` | Returns `true` if the board is in the winning state |
-| `moveField(uint256 index) -> uint256` | Slide the tile at `index` into the adjacent empty cell. Returns `0` on success, error code otherwise |
-| `setCell(uint256 index, uint256 value) -> uint256` | One-time board initialization (locked after all 16 cells are set) |
+| `moveField(uint256 index)` | Slide the tile at `index` into the adjacent empty cell. Reverts on error |
+| `setCell(uint256 index, uint256 value)` | One-time board initialization (locked after all 16 cells are set). Reverts on error |
 
-**Important:** `moveField` requires that you hold a valid lock on the challenge (see Step 4). The game contract calls back to the registry via `validateOwnsLock(owner, challenge)` to verify this.
+**Important:** `moveField` requires that you hold a valid lock on the challenge (see Step 4). The game contract calls back to the registry via `validateOwnsLock(owner, challenge)` to verify this. If the lock validation fails, the transaction reverts.
 
 ## Step 3: Find an exploit locally
 
@@ -86,18 +86,18 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {ISolvable} from "../src/interfaces/ISolvable.sol";
 
 interface IGame {
-    function setCell(uint256 index, uint256 value) external returns (uint256);
-    function moveField(uint256 index) external returns (uint256);
+    function setCell(uint256 index, uint256 value) external;
+    function moveField(uint256 index) external;
     function getBoard(uint256 index) external view returns (uint256);
 }
 
 contract ExploitTest is Test {
     function test_exploit() public {
-        // Deploy a DummyLockValidator that always returns 0 (lock valid)
+        // Deploy a DummyLockValidator that never reverts (lock always valid)
         address validator = FeDeployer.deployFeWithArgs(
             vm,
             "contracts/out/DummyLockValidator.bin",
-            abi.encode(uint256(0))
+            abi.encode(false)
         );
 
         // Deploy the game variant you want to attack
@@ -134,6 +134,7 @@ contract ExploitTest is Test {
 Run it:
 
 ```bash
+make build  # ensure fresh Fe artifacts
 forge test --match-test test_exploit -vvvv
 ```
 
@@ -167,14 +168,13 @@ cast send $REGISTRY "lock(address)" $CHALLENGE \
     --rpc-url $ETH_RPC_URL
 ```
 
-The return value should be `0` (success). Any other value is an error:
+The transaction succeeds if the lock is acquired. It reverts if:
 
-| Return value | Meaning |
+| Error | Meaning |
 |---|---|
-| `0` | Success |
-| `4` | `AlreadyLocked` — someone else holds the lock |
-| `5` | `InvalidClaim` — challenge is not registered |
-| `8` | `InvalidDeposit` — you sent less ETH than required |
+| `AlreadyLocked` | Someone else holds the lock |
+| `InvalidClaim` | Challenge is not registered |
+| `InvalidDeposit` | You sent less ETH than required |
 
 You now have **100 blocks** (~20 minutes) of exclusive access.
 
@@ -222,28 +222,12 @@ cast send $REGISTRY "claim(address)" $CHALLENGE \
     --rpc-url $ETH_RPC_URL
 ```
 
-Return value `0` means success. The challenge's prize amount is sent to your address. The challenge is then marked as closed.
+The transaction succeeds and the prize is transferred to your address. The challenge is then marked as closed. The transaction reverts if:
 
-| Return value | Meaning |
+| Error | Meaning |
 |---|---|
-| `0` | Success — prize claimed |
-| `3` | `MissingLock` — you don't hold a valid lock |
-| `5` | `InvalidClaim` — puzzle is not solved or challenge is closed |
-
-## Error code reference
-
-All contract functions return `0` on success. Non-zero return values indicate errors:
-
-| Code | Name | Description |
-|---|---|---|
-| `1` | `InvalidIndex` | Board index out of range (must be 0-15) |
-| `2` | `NotMovable` | Tile is not adjacent to the empty cell |
-| `3` | `MissingLock` | Caller doesn't hold a valid lock for the challenge |
-| `4` | `AlreadyLocked` | Challenge is already locked by someone else |
-| `5` | `InvalidClaim` | Challenge is not registered, not open, or not solved |
-| `6` | `OnlyAdmin` | Only the admin can call this function |
-| `7` | `AlreadyInitialized` | Board has already been initialized via `setCell` |
-| `8` | `InvalidDeposit` | Lock deposit amount is insufficient |
+| `MissingLock` | You don't hold a valid lock |
+| `InvalidClaim` | Puzzle is not solved or challenge is closed |
 
 ## Tips
 
@@ -253,3 +237,4 @@ All contract functions return `0` on success. Non-zero return values indicate er
 - **Use `cast call`** (read-only) before `cast send` (transaction) to verify your calls will succeed.
 - **Don't broadcast your exploit** before acquiring a lock. Mempool watchers can front-run unprotected transactions.
 - **Your lock deposit is not refunded.** It stays in the registry contract. Only claim if you're confident the exploit works on-chain.
+- **Always run `make build`** before Forge tests to ensure you're testing against current Fe bytecode.

@@ -17,8 +17,8 @@ All game contracts implement the `ISolvable` interface (`isSolved() -> bool`).
 
 ## Tech stack
 
-- **Contracts**: [Fe 26.0.0-alpha.8](https://fe-lang.org/) (primary) + Solidity (interfaces, deployment, tests)
-- **Build & test**: [Foundry](https://book.getfoundry.sh/) (forge)
+- **Contracts**: [Fe](https://fe-lang.org/) (primary) + Solidity (interfaces, deployment, tests)
+- **Build & test**: `make` + [Fe compiler](https://fe-lang.org/) + [Foundry](https://book.getfoundry.sh/) (forge)
 - **Network**: Ethereum mainnet
 - **Website**: [Zola](https://www.getzola.org/) static site generator
 
@@ -33,6 +33,7 @@ src/                 Solidity interfaces + FeDeployer helper
 test/                Foundry test suite
 script/              Foundry deployment script
 web/                 Zola-based website with interactive puzzle
+Makefile             Central build process
 ```
 
 ## Getting started
@@ -45,14 +46,15 @@ cd bountiful
 ### Build
 
 ```bash
-cd contracts && fe build && cd ..
-forge build
+make build
 ```
 
 ### Test
 
 ```bash
-forge test
+make test        # runs Fe tests + Forge tests (builds Fe first)
+make test-fe     # Fe tests only
+make test-forge  # Forge tests only (builds Fe first)
 ```
 
 ### Deploy (Mainnet)
@@ -67,6 +69,7 @@ forge script script/Deploy.s.sol --rpc-url $MAINNET_RPC_URL --broadcast
 ### Run the website locally
 
 ```bash
+make docs              # generate API docs (docs.json, fe-web.js, index.html)
 cd web && zola serve
 ```
 
@@ -98,4 +101,4 @@ The admin can register new challenge contracts or remove existing ones (when unl
 
 - **[Bounty Hunting Guide](doc/bounty-hunting-guide.md)** — Step-by-step walkthrough for finding exploits and claiming prizes
 - **[AGENTS.md](AGENTS.md)** — Structured reference for AI agents hunting bounties
-- 
+-

@@ -11,9 +11,8 @@ Make `isSolved()` return `true` on a contract whose board is initialized to an u
 ```bash
 git clone https://github.com/cburgdorf/bountiful.git
 cd bountiful
-cd contracts && fe build && cd ..
-forge build
-forge test  # verify everything works
+make build     # compile Fe contracts
+make test      # run Fe tests + Forge tests (rebuilds Fe first)
 ```
 
 ## Target contracts
@@ -52,28 +51,29 @@ The difference: tiles 14 and 15 are swapped, empty cell at index 14 instead of 1
 ```
 getBoard(uint256 index) -> uint256        // read cell value at index (0-15)
 isSolved() -> bool                        // true if board matches winning state
-moveField(uint256 index) -> uint256       // slide tile at index into adjacent empty cell
-setCell(uint256 index, uint256 value) -> uint256  // one-time init (locked after cell 15 is set)
+moveField(uint256 index)                  // slide tile into adjacent empty cell (reverts on error)
+setCell(uint256 index, uint256 value)     // one-time init, locked after cell 15 is set (reverts on error)
 ```
 
-`moveField` requires a valid lock. For local testing, deploy a `DummyLockValidator` that returns `0`.
+`moveField` requires a valid lock. For local testing, deploy a `DummyLockValidator` with `abi.encode(false)` (no revert).
 
-Note: `Game2D` uses `moveField(uint256 row, uint256 col)` instead of a single index.
+Note: `Game2D` uses `moveField(uint256 row, uint256 col)` and `setCell2D(uint256 row, uint256 col, uint256 value)` instead of a single index.
 
-## Return values
+## Error handling
 
-All functions return `0` on success. Error codes:
+All contract functions revert on error. Errors are defined in `contracts/ingots/shared/src/lib.fe`:
 
-| Code | Name |
+| Error | Description |
 |---|---|
-| 1 | `InvalidIndex` |
-| 2 | `NotMovable` |
-| 3 | `MissingLock` |
-| 4 | `AlreadyLocked` |
-| 5 | `InvalidClaim` |
-| 6 | `OnlyAdmin` |
-| 7 | `AlreadyInitialized` |
-| 8 | `InvalidDeposit` |
+| `InvalidIndex` | Board index out of range (must be 0-15) |
+| `NotMovable` | Tile is not adjacent to the empty cell |
+| `MissingLock` | Caller doesn't hold a valid lock for the challenge |
+| `AlreadyLocked` | Challenge is already locked by someone else |
+| `InvalidClaim` | Challenge is not registered, not open, or not solved |
+| `OnlyAdmin` | Only the admin can call this function |
+| `AlreadyInitialized` | Board has already been initialized via `setCell` |
+| `InvalidDeposit` | Lock deposit amount is insufficient |
+| `TransferFailed` | ETH transfer failed |
 
 ## Exploit test template
 
@@ -88,16 +88,16 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {ISolvable} from "../src/interfaces/ISolvable.sol";
 
 interface IGame {
-    function setCell(uint256 index, uint256 value) external returns (uint256);
-    function moveField(uint256 index) external returns (uint256);
+    function setCell(uint256 index, uint256 value) external;
+    function moveField(uint256 index) external;
     function getBoard(uint256 index) external view returns (uint256);
 }
 
 contract ExploitTest is Test {
     function test_exploit() public {
-        // DummyLockValidator returning 0 = lock always valid
+        // DummyLockValidator with false = never reverts (lock always valid)
         address validator = FeDeployer.deployFeWithArgs(
-            vm, "contracts/out/DummyLockValidator.bin", abi.encode(uint256(0))
+            vm, "contracts/out/DummyLockValidator.bin", abi.encode(false)
         );
 
         // Deploy target (swap bin path for other variants)
@@ -128,7 +128,12 @@ contract ExploitTest is Test {
 }
 ```
 
-Run: `forge test --match-test test_exploit -vvvv`
+Run:
+
+```bash
+make build  # ensure fresh Fe artifacts
+forge test --match-test test_exploit -vvvv
+```
 
 ## Attack vectors
 
@@ -156,7 +161,7 @@ Each variant stores the board differently. Look for:
 - Function selector collisions
 
 ### 5. Cross-contract calls
-- `validateOwnsLock` callback: does the return value get checked correctly?
+- `validateOwnsLock` callback: does the revert propagate correctly?
 - `isSolved` callback: could the return value be misinterpreted?
 
 ### 6. WordRepr packing (Challenge struct)
@@ -199,6 +204,6 @@ test/BountyRegistry.t.sol
 1. Read the Fe source for a game variant
 2. Hypothesize a compiler bug (e.g., "what if array index 14 wraps to 0?")
 3. Write a Foundry test that exploits it
-4. Run `forge test --match-test test_exploit -vvvv`
+4. Run `make build && forge test --match-test test_exploit -vvvv`
 5. If `isSolved()` returns `true`, you found a bug
 6. Repeat for other variants — the same compiler bug may affect multiple contracts
