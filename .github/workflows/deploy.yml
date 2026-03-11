@@ -36,12 +36,8 @@ jobs:
           sudo mv fe /usr/local/bin/fe
           fe --version
 
-      - name: Generate API docs
-        working-directory: contracts
-        run: |
-          fe doc -o ../web/static/api json
-          fe doc -o ../web/static/api bundle
-          fe doc -o ../web/static/api static
+      - name: Generate docs and prepare deployment data
+        run: make docs
 
       - name: Install Zola
         run: |
