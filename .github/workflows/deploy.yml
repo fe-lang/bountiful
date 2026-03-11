@@ -49,7 +49,7 @@ jobs:
 
       - name: Build site
         working-directory: web
-        run: zola build --base-url https://fe-lang.github.io/bountiful
+        run: zola build --base-url https://bountiful.fe-lang.org
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
