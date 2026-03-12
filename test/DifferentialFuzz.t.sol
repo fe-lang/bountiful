@@ -27,6 +27,7 @@ contract DifferentialFuzzTest is Test {
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
 
     uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
+    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
     uint256 constant MAX_ACTIONS = 16;
 
     // 1D game addresses stored as an array to avoid stack-too-deep
@@ -140,6 +141,32 @@ contract DifferentialFuzzTest is Test {
             target.staticcall(abi.encodeWithSelector(IGame2D.isSolved.selector));
         assertTrue(ok, "2D isSolved reverted");
         solved = abi.decode(data, (bool));
+    }
+
+    /// Fuzz test: no sequence of valid moves can ever solve the UNSOLVABLE_BOARD.
+    function testFuzz_unsolvableBoardStaysUnsolved(bytes memory actions) public {
+        vm.assume(actions.length <= MAX_ACTIONS);
+
+        Games memory games = deployGames(UNSOLVABLE_BOARD);
+
+        for (uint256 i = 0; i < actions.length; i++) {
+            uint256 rawIndex = uint256(uint8(actions[i])) % 16;
+
+            bytes memory call1d = abi.encodeWithSelector(IGame1D.moveField.selector, rawIndex);
+            for (uint256 j = 0; j < games.games1d.length; j++) {
+                games.games1d[j].call(call1d);
+            }
+
+            uint256 row = rawIndex / 4;
+            uint256 col = rawIndex % 4;
+            games.game2d.call(abi.encodeWithSelector(IGame2D.moveField.selector, row, col));
+        }
+
+        string[6] memory names = ["Game", "GameEnum", "GameBitboard", "GameTrait", "GameNested", "GameMonadic"];
+        for (uint256 j = 0; j < games.games1d.length; j++) {
+            assertFalse(readSolved1D(games.games1d[j]), string.concat(names[j], " should never be solvable"));
+        }
+        assertFalse(readSolved2D(games.game2d), "Game2D should never be solvable");
     }
 
     function permutedBoard(uint256 seed) internal pure returns (uint256 packedBoard) {
