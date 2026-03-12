@@ -19,8 +19,10 @@ test-forge: build
 	forge test
 
 # Deploy contracts and write manifest
+# Local:   make deploy RPC_URL=http://localhost:8545
+# Mainnet: make deploy RPC_URL=https://... LEDGER=1 DEPLOYER_ADDRESS=0x...
 deploy: build
-	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast
+	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast $(if $(LEDGER),--ledger)
 
 # Pick the best deployment manifest and copy to web/ for Zola
 prepare-web:

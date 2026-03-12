@@ -19,16 +19,25 @@ contract Deploy is Script {
     uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
 
     function run() external {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address admin = vm.addr(deployerKey);
+        // Ledger mode: set DEPLOYER_ADDRESS (used with --ledger flag)
+        // Local mode:  set DEPLOYER_PRIVATE_KEY (used for Anvil / testing)
+        address admin;
+        bool useLedger = vm.envOr("DEPLOYER_ADDRESS", address(0)) != address(0);
+        if (useLedger) {
+            admin = vm.envAddress("DEPLOYER_ADDRESS");
+            vm.startBroadcast(admin);
+        } else {
+            uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+            admin = vm.addr(deployerKey);
+            vm.startBroadcast(deployerKey);
+        }
+
         uint256 lockDeposit = vm.envOr("LOCK_DEPOSIT", uint256(0.01 ether));
         uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(1 ether)));
 
         console.log("Deployer / Admin:", admin);
         console.log("Lock deposit:", lockDeposit);
         console.log("Prize per challenge:", prizeAmount);
-
-        vm.startBroadcast(deployerKey);
 
         // 1. Deploy BountyRegistry
         address registryAddr = FeDeployer.deployFeWithArgs(
