@@ -13,7 +13,7 @@ contract Deploy is Script {
     string constant GAME_BITBOARD_BIN = "contracts/out/GameBitboard.bin";
     string constant GAME_TRAIT_BIN = "contracts/out/GameTrait.bin";
     string constant GAME_NESTED_BIN = "contracts/out/GameNested.bin";
-    string constant GAME_PACKED_BIN = "contracts/out/GameMonadic.bin";
+    string constant GAME_MONADIC_BIN = "contracts/out/GameMonadic.bin";
 
     // Packed board: [1,2,...,14,0,15] — one move from solved
     uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
@@ -90,7 +90,7 @@ contract Deploy is Script {
 
         // 8. Deploy GameMonadic (functional combinator variant)
         address gameMonadicAddr = FeDeployer.deployFeWithArgs(
-            vm, GAME_PACKED_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
+            vm, GAME_MONADIC_BIN, abi.encode(registryAddr, UNSOLVABLE_BOARD)
         );
         registry.registerChallenge(gameMonadicAddr, prizeAmount);
         console.log("GameMonadic:", gameMonadicAddr);
