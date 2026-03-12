@@ -16,6 +16,7 @@ use shared::{
     unpack_board,
     SOLVED_BOARD,
     UNSOLVABLE_BOARD,
+    ONE_MOVE_BOARD,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -133,7 +134,7 @@ fn test_2d_solved() uses (evm: mut Evm) {
 #[test]
 fn test_2d_move_and_solve() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 210)
-    let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 211)
+    let game = evm.create2<Game2D>(value: 0, args: (v, ONE_MOVE_BOARD), salt: 211)
 
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
 
@@ -155,6 +156,7 @@ fn test_2d_invalid_move() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 222)
     let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 223)
 
+    // Move (0,0) — not adjacent to empty at 15
     evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 0, col: 0 })
 }
 
@@ -163,7 +165,7 @@ fn test_2d_move_without_lock() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 224)
     let game = evm.create2<Game2D>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 225)
 
-    evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 3 })
+    evm.call(addr: game, gas: 300000, value: 0, message: Game2DMsg::MoveField { row: 3, col: 2 })
 }
 
 #[test(should_revert)]

@@ -17,6 +17,7 @@ use shared::{
     unpack_board,
     SOLVED_BOARD,
     UNSOLVABLE_BOARD,
+    ONE_MOVE_BOARD,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -201,7 +202,7 @@ fn test_nested_unsolved() uses (evm: mut Evm) {
 #[test]
 fn test_nested_move_and_solve() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 520)
-    let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 521)
+    let game = evm.create2<GameNested>(value: 0, args: (v, ONE_MOVE_BOARD), salt: 521)
 
     evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 15 })
 
@@ -214,6 +215,7 @@ fn test_nested_invalid_move() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 530)
     let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 531)
 
+    // Move index 0 — not adjacent to empty at 15
     evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 0 })
 }
 
@@ -222,7 +224,7 @@ fn test_nested_move_without_lock() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 540)
     let game = evm.create2<GameNested>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 541)
 
-    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 15 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameNestedMsg::MoveField { index: 14 })
 }
 
 #[test(should_revert)]

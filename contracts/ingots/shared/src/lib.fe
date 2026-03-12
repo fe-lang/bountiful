@@ -139,8 +139,11 @@ pub fn winning_value(index: u256) -> u256 {
 /// Solved board: [1,2,3,...,15,0] packed
 pub const SOLVED_BOARD: u256 = 0x0FEDCBA987654321
 
-/// Unsolvable board: [1,2,3,...,14,0,15] packed
-pub const UNSOLVABLE_BOARD: u256 = 0xF0EDCBA987654321
+/// Unsolvable board: [1,2,...,13,15,14,0] — tiles 14 and 15 swapped, mathematically unsolvable
+pub const UNSOLVABLE_BOARD: u256 = 0x0EFDCBA987654321
+
+/// One move from solved: [1,2,...,14,0,15] — solvable via moveField(15)
+pub const ONE_MOVE_BOARD: u256 = 0xF0EDCBA987654321
 
 /// Unpacks a packed board into a 16-element array.
 pub fn unpack_board(packed: u256) -> [u256; 16] {
@@ -276,15 +279,16 @@ fn test_unpack_board_solved() uses (evm: mut Evm) {
 #[test]
 fn test_unpack_board_unsolvable() uses (evm: mut Evm) {
     let board = unpack_board(UNSOLVABLE_BOARD)
-    // Cells 0-13: values 1-14
+    // Cells 0-12: values 1-13
     let mut i: usize = 0
-    while i < 14 {
+    while i < 13 {
         assert(board[i] == (i as u256) + 1)
         i += 1
     }
-    // Cell 14 = 0 (empty), cell 15 = 15
-    assert(board[14] == 0)
-    assert(board[15] == 15)
+    // Cell 13 = 15, cell 14 = 14, cell 15 = 0 (empty)
+    assert(board[13] == 15)
+    assert(board[14] == 14)
+    assert(board[15] == 0)
 }
 
 #[test]

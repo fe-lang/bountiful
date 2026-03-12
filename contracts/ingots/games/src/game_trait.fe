@@ -18,6 +18,7 @@ use shared::{
     unpack_board,
     SOLVED_BOARD,
     UNSOLVABLE_BOARD,
+    ONE_MOVE_BOARD,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -219,7 +220,7 @@ fn test_trait_unsolved() uses (evm: mut Evm) {
 #[test]
 fn test_trait_move_and_solve() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 420)
-    let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 421)
+    let game = evm.create2<GameTrait>(value: 0, args: (v, ONE_MOVE_BOARD), salt: 421)
 
     evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 15 })
 
@@ -232,7 +233,7 @@ fn test_trait_invalid_move() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 430)
     let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 431)
 
-    // Move index 0 — not adjacent to empty at 14
+    // Move index 0 — not adjacent to empty at 15
     evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 0 })
 }
 
@@ -241,7 +242,7 @@ fn test_trait_move_without_lock() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 440)
     let game = evm.create2<GameTrait>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 441)
 
-    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 15 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameTraitMsg::MoveField { index: 14 })
 }
 
 #[test(should_revert)]

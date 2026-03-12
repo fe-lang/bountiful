@@ -17,6 +17,7 @@ use shared::{
     unpack_board,
     SOLVED_BOARD,
     UNSOLVABLE_BOARD,
+    ONE_MOVE_BOARD,
     LockValidatorMsg,
 }
 use shared::dummy_lock_validator::DummyLockValidator
@@ -186,7 +187,7 @@ fn test_enum_solved() uses (evm: mut Evm) {
 #[test]
 fn test_enum_move_and_solve() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 310)
-    let game = evm.create2<GameEnum>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 311)
+    let game = evm.create2<GameEnum>(value: 0, args: (v, ONE_MOVE_BOARD), salt: 311)
 
     evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 15 })
 
@@ -208,6 +209,7 @@ fn test_enum_invalid_move() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 322)
     let game = evm.create2<GameEnum>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 323)
 
+    // Move index 0 — not adjacent to empty at 15
     evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 0 })
 }
 
@@ -216,7 +218,7 @@ fn test_enum_move_without_lock() uses (evm: mut Evm) {
     let v = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 324)
     let game = evm.create2<GameEnum>(value: 0, args: (v, UNSOLVABLE_BOARD), salt: 325)
 
-    evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 15 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameEnumMsg::MoveField { index: 14 })
 }
 
 #[test(should_revert)]

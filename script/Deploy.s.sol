@@ -15,8 +15,8 @@ contract Deploy is Script {
     string constant GAME_NESTED_BIN = "contracts/out/GameNested.bin";
     string constant GAME_MONADIC_BIN = "contracts/out/GameMonadic.bin";
 
-    // Packed board: [1,2,...,14,0,15] — one move from solved
-    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    // Packed board: tiles 14 and 15 swapped, mathematically unsolvable
+    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
 
     function run() external {
         // Ledger mode: set DEPLOYER_ADDRESS (used with --ledger flag)

@@ -12,7 +12,7 @@ use shared::{
 }
 use shared::game_util::{ADJACENCY, is_movable_to}
 use shared::dummy_lock_validator::DummyLockValidator
-use shared::{SOLVED_BOARD, UNSOLVABLE_BOARD}
+use shared::{SOLVED_BOARD, UNSOLVABLE_BOARD, ONE_MOVE_BOARD}
 
 pub msg GameMsg {
     #[selector = sol("getBoard(uint256)")]
@@ -120,7 +120,7 @@ fn test_game_unsolved() uses (evm: mut Evm) {
 #[test]
 fn test_game_move_and_solve() uses (evm: mut Evm) {
     let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 20)
-    let game = evm.create2<Game>(value: 0, args: (validator, UNSOLVABLE_BOARD), salt: 21)
+    let game = evm.create2<Game>(value: 0, args: (validator, ONE_MOVE_BOARD), salt: 21)
 
     evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
 
@@ -133,7 +133,7 @@ fn test_game_invalid_move() uses (evm: mut Evm) {
     let validator = evm.create2<DummyLockValidator>(value: 0, args: (false,), salt: 30)
     let game = evm.create2<Game>(value: 0, args: (validator, UNSOLVABLE_BOARD), salt: 31)
 
-    // Move index 0 — not adjacent to empty at 14
+    // Move index 0 — not adjacent to empty at 15
     evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 0 })
 }
 
@@ -142,7 +142,7 @@ fn test_game_move_without_lock() uses (evm: mut Evm) {
     let validator = evm.create2<DummyLockValidator>(value: 0, args: (true,), salt: 40)
     let game = evm.create2<Game>(value: 0, args: (validator, UNSOLVABLE_BOARD), salt: 41)
 
-    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 15 })
+    evm.call(addr: game, gas: 300000, value: 0, message: GameMsg::MoveField { index: 14 })
 }
 
 #[test(should_revert)]

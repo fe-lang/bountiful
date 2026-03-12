@@ -18,7 +18,8 @@ contract GameMonadicTest is Test {
 
     // Packed board constants (4 bits per cell, cell 0 at bits 0..3)
     uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
-    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
+    uint256 constant ONE_MOVE_BOARD = 0xF0EDCBA987654321;
     uint256 constant TWO_MOVES_BOARD = 0xFE0DCBA987654321;
 
     function deployGameMonadic(address lockValidator, uint256 packedBoard) internal returns (IGameMonadic) {
@@ -79,7 +80,7 @@ contract GameMonadicTest is Test {
 
     function test_moveAndSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGameMonadic game = deployGameMonadic(validator, UNSOLVABLE_BOARD);
+        IGameMonadic game = deployGameMonadic(validator, ONE_MOVE_BOARD);
 
         game.moveField(15);
 
@@ -90,7 +91,7 @@ contract GameMonadicTest is Test {
         address validator = deployDummyLockValidator(false);
         IGameMonadic game = deployGameMonadic(validator, UNSOLVABLE_BOARD);
 
-        // Move index 0 — not adjacent to empty at 14
+        // Move index 0 — not adjacent to empty at 15
         vm.expectRevert();
         game.moveField(0);
     }
@@ -104,7 +105,7 @@ contract GameMonadicTest is Test {
         IGameMonadic game = deployGameMonadic(validator, UNSOLVABLE_BOARD);
 
         vm.expectRevert();
-        game.moveField(15);
+        game.moveField(14);
     }
 
     // =========================================================================
@@ -125,7 +126,7 @@ contract GameMonadicTest is Test {
 
     function test_moveFieldWithRealRegistry() public {
         IBountyRegistry registry = deployRegistry(address(this), 0);
-        IGameMonadic game = deployGameMonadic(address(registry), UNSOLVABLE_BOARD);
+        IGameMonadic game = deployGameMonadic(address(registry), ONE_MOVE_BOARD);
 
         // Register the game as a challenge (required for locking)
         registry.registerChallenge(address(game), 0);

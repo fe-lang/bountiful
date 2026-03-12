@@ -18,7 +18,8 @@ contract Game2DTest is Test {
 
     // Packed board constants (4 bits per cell, cell 0 at bits 0..3)
     uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
-    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
+    uint256 constant ONE_MOVE_BOARD = 0xF0EDCBA987654321;
     uint256 constant TWO_MOVES_BOARD = 0xFE0DCBA987654321;
 
     function deployGame2D(address lockValidator, uint256 packedBoard) internal returns (IGame2D) {
@@ -79,7 +80,7 @@ contract Game2DTest is Test {
 
     function test_moveAndSolve() public {
         address validator = deployDummyLockValidator(false);
-        IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
+        IGame2D game = deployGame2D(validator, ONE_MOVE_BOARD);
 
         // Move (3,3) into empty at (3,2) — adjacent
         game.moveField(3, 3);
@@ -91,7 +92,7 @@ contract Game2DTest is Test {
         address validator = deployDummyLockValidator(false);
         IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
-        // Move (0,0) — not adjacent to empty at (3,2)
+        // Move (0,0) — not adjacent to empty at (3,3)
         vm.expectRevert();
         game.moveField(0, 0);
     }
@@ -105,7 +106,7 @@ contract Game2DTest is Test {
         IGame2D game = deployGame2D(validator, UNSOLVABLE_BOARD);
 
         vm.expectRevert();
-        game.moveField(3, 3);
+        game.moveField(3, 2);
     }
 
     // =========================================================================
@@ -126,7 +127,7 @@ contract Game2DTest is Test {
 
     function test_moveFieldWithRealRegistry() public {
         IBountyRegistry registry = deployRegistry(address(this), 0);
-        IGame2D game = deployGame2D(address(registry), UNSOLVABLE_BOARD);
+        IGame2D game = deployGame2D(address(registry), ONE_MOVE_BOARD);
 
         // Register the game as a challenge (required for locking)
         registry.registerChallenge(address(game), 0);
