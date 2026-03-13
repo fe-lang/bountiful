@@ -51,7 +51,7 @@ There are four game variants, each exercising different Fe features. All impleme
 | `GameBitboard` | single `u256` | Bitwise ops, bitpacking |
 | `GameTrait` | `[u256; 16]` + traits | Trait dispatch, default methods |
 | `GameNested` | nested structs | Struct composition, field access |
-| `GameMonadic` | single `u256` | Functional combinators, closures |
+| `GameMonadic` | single `u256` | Functional combinators |
 
 ### Design Philosophy & Attack Surface
 
