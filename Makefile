@@ -22,6 +22,9 @@ test-forge: build
 # Local:   make deploy RPC_URL=http://localhost:8545
 # Mainnet: make deploy RPC_URL=https://... LEDGER=1 DEPLOYER_ADDRESS=0x...
 deploy: build
+ifndef RPC_URL
+	$(error RPC_URL is required. Usage: make deploy RPC_URL=http://localhost:8545)
+endif
 	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast $(if $(LEDGER),--ledger)
 
 # Pick the best deployment manifest and copy to web/ for Zola
