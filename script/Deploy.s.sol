@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Script, console} from "forge-std/Script.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
+import {UNSOLVABLE_BOARD} from "../src/Constants.sol";
 
 contract Deploy is Script {
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
@@ -14,9 +15,6 @@ contract Deploy is Script {
     string constant GAME_TRAIT_BIN = "contracts/out/GameTrait.bin";
     string constant GAME_NESTED_BIN = "contracts/out/GameNested.bin";
     string constant GAME_MONADIC_BIN = "contracts/out/GameMonadic.bin";
-
-    // Packed board: tiles 14 and 15 swapped, mathematically unsolvable
-    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
 
     function run() external {
         // Ledger mode: set DEPLOYER_ADDRESS (used with --ledger flag)
@@ -33,7 +31,7 @@ contract Deploy is Script {
         }
 
         uint256 lockDeposit = vm.envOr("LOCK_DEPOSIT", uint256(0.01 ether));
-        uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(1 ether)));
+        uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(0.1 ether)));
 
         console.log("Deployer / Admin:", admin);
         console.log("Lock deposit:", lockDeposit);

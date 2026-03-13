@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
+import {SOLVED_BOARD, UNSOLVABLE_BOARD} from "../src/Constants.sol";
 
 interface IGame1D {
     function getBoard(uint256 index) external view returns (uint256);
@@ -26,8 +27,6 @@ contract DifferentialFuzzTest is Test {
     string constant GAME_PACKED_BIN = "contracts/out/GameMonadic.bin";
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
 
-    uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
-    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
     uint256 constant MAX_ACTIONS = 16;
 
     // 1D game addresses stored as an array to avoid stack-too-deep

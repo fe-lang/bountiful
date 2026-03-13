@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
+import {SOLVED_BOARD, UNSOLVABLE_BOARD, ONE_MOVE_BOARD, TWO_MOVES_BOARD} from "../src/Constants.sol";
 
 interface IGame2D {
     function getBoard(uint256 row, uint256 col) external view returns (uint256);
@@ -16,11 +17,6 @@ contract Game2DTest is Test {
     string constant DUMMY_LOCK_VALIDATOR_BIN = "contracts/out/DummyLockValidator.bin";
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
 
-    // Packed board constants (4 bits per cell, cell 0 at bits 0..3)
-    uint256 constant SOLVED_BOARD = 0x0FEDCBA987654321;
-    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
-    uint256 constant ONE_MOVE_BOARD = 0xF0EDCBA987654321;
-    uint256 constant TWO_MOVES_BOARD = 0xFE0DCBA987654321;
 
     function deployGame2D(address lockValidator, uint256 packedBoard) internal returns (IGame2D) {
         address addr = FeDeployer.deployFeWithArgs(
