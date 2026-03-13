@@ -19,7 +19,7 @@ Where `_` is the empty cell (value `0`) at index 15.
 
 ## Prerequisites
 
-- [Fe compiler](https://fe-lang.org/) installed (must support `revert()` and `EvmResultExt` — build from source if needed)
+- [Fe compiler](https://fe-lang.org/) installed (must support be version [v26.0.0-alpha.10](https://github.com/argotorg/fe/releases/tag/v26.0.0-alpha.10))
 - [Foundry](https://book.getfoundry.sh/) installed (`forge`, `cast`)
 - GNU Make
 - An Ethereum wallet with ETH on mainnet (for the lock deposit and gas)
