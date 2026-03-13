@@ -4,7 +4,7 @@ This is a step-by-step guide for developers (and AI agents) who want to particip
 
 ## Background
 
-Each challenge is a 15-puzzle deployed in an [unsolvable initial state](https://en.wikipedia.org/wiki/15_puzzle#Solvability). The board `[1, 2, ..., 14, 0, 15]` has tiles 14 and 15 swapped with the empty cell at position 14. Under correct puzzle rules this state **cannot** be solved. If you manage to solve it anyway, that means you found a bug in the Fe compiler.
+Each challenge is a 15-puzzle deployed in an [unsolvable initial state](https://en.wikipedia.org/wiki/15_puzzle#Solvability). The board `[1, 2, ..., 13, 15, 14, 0]` has tiles 14 and 15 swapped with the empty cell at position 15. Under correct puzzle rules this state **cannot** be solved. If you manage to solve it anyway, that means you found a bug in the Fe compiler.
 
 The winning board state is:
 
@@ -49,6 +49,9 @@ There are four game variants, each exercising different Fe features. All impleme
 | `Game2D` | `[[u256; 4]; 4]` | 2D nested arrays |
 | `GameEnum` | `[u256; 16]` + enums | Enums, match, struct methods |
 | `GameBitboard` | single `u256` | Bitwise ops, bitpacking |
+| `GameTrait` | `[u256; 16]` + traits | Trait dispatch, default methods |
+| `GameNested` | nested structs | Struct composition, field access |
+| `GameMonadic` | single `u256` | Functional combinators, closures |
 
 ### Design Philosophy & Attack Surface
 
@@ -95,6 +98,7 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import {FeDeployer} from "../src/FeDeployer.sol";
 import {ISolvable} from "../src/interfaces/ISolvable.sol";
+import {UNSOLVABLE_BOARD} from "../src/Constants.sol";
 
 interface IGame {
     function moveField(uint256 index) external;
@@ -102,8 +106,6 @@ interface IGame {
 }
 
 contract ExploitTest is Test {
-    // Unsolvable board: [1,2,...,14,0,15] packed as 4 bits per cell
-    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
 
     function test_exploit() public {
         // Deploy a DummyLockValidator that never reverts (lock always valid)
@@ -237,7 +239,7 @@ The transaction succeeds and the prize is transferred to your address. The chall
 
 ## Tips
 
-- **Try all four game variants.** Each uses different Fe features and may expose different compiler bugs.
+- **Try all seven game variants.** Each uses different Fe features and may expose different compiler bugs.
 - **Read the Fe source code**, not just the Solidity interfaces. The bugs are in how Fe compiles to EVM bytecode.
 - **Use `forge test -vvvv`** to get full EVM execution traces when developing your exploit.
 - **Use `cast call`** (read-only) before `cast send` (transaction) to verify your calls will succeed.
