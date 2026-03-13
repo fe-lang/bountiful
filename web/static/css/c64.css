@@ -368,6 +368,25 @@ ol li::before {
   background: var(--c64-white);
 }
 
+.etherscan-btn {
+  font-family: var(--font);
+  font-size: 0.55rem;
+  line-height: 1;
+  color: var(--c64-bg);
+  background: var(--c64-text);
+  border: none;
+  padding: 5px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.etherscan-btn:hover,
+.etherscan-btn:focus {
+  background: var(--c64-white);
+  outline: none;
+}
+
 /* ── PUZZLE ── */
 .puzzle-controls {
   display: flex;

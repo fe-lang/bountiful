@@ -54,6 +54,26 @@
   {% set deploy = load_data(path="deployment.json", required=false) %}
   <section id="contracts" class="c64-quadrant">
     <h2>&gt; CONTRACTS</h2>
+    {% set chain_id = deploy._chainId | default(value=0) %}
+    {% if chain_id == 1 %}
+      {% set network_name = "ETHEREUM MAINNET" %}
+      {% set etherscan_base = "https://etherscan.io/address/" %}
+    {% elif chain_id == 11155111 %}
+      {% set network_name = "SEPOLIA TESTNET" %}
+      {% set etherscan_base = "https://sepolia.etherscan.io/address/" %}
+    {% elif chain_id == 17000 %}
+      {% set network_name = "HOLESKY TESTNET" %}
+      {% set etherscan_base = "https://holesky.etherscan.io/address/" %}
+    {% elif chain_id == 31337 %}
+      {% set network_name = "LOCAL (ANVIL)" %}
+      {% set etherscan_base = "" %}
+    {% elif chain_id == 0 %}
+      {% set network_name = "NOT DEPLOYED" %}
+      {% set etherscan_base = "" %}
+    {% else %}
+      {% set network_name = "CHAIN " ~ chain_id %}
+      {% set etherscan_base = "" %}
+    {% endif %}
     <table class="c64-table">
       {% set registry_addr = deploy.BountyRegistry | default(value="NOT DEPLOYED") %}
       <tr>
@@ -62,6 +82,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ registry_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ registry_addr }}" aria-label="Copy registry contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ registry_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="registry::registry::BountyRegistry" aria-label="View registry source">SHOW SOURCE</button>
           </div>
         </td>
@@ -73,6 +94,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ game_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ game_addr }}" aria-label="Copy game contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ game_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game::Game" aria-label="View game source">SHOW SOURCE</button>
           </div>
         </td>
@@ -84,6 +106,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ game2d_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ game2d_addr }}" aria-label="Copy game 2d contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ game2d_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_2d::Game2D" aria-label="View game 2d source">SHOW SOURCE</button>
           </div>
         </td>
@@ -95,6 +118,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ gameenum_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ gameenum_addr }}" aria-label="Copy game enum contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ gameenum_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_enum::GameEnum" aria-label="View game enum source">SHOW SOURCE</button>
           </div>
         </td>
@@ -106,6 +130,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ gamebit_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ gamebit_addr }}" aria-label="Copy game bit contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ gamebit_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_bitboard::GameBitboard" aria-label="View game bit source">SHOW SOURCE</button>
           </div>
         </td>
@@ -117,6 +142,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ gametrait_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ gametrait_addr }}" aria-label="Copy game trait contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ gametrait_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_trait::GameTrait" aria-label="View game trait source">SHOW SOURCE</button>
           </div>
         </td>
@@ -128,6 +154,7 @@
           <div class="contract-entry">
             <span class="contract-value">{{ gamenested_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ gamenested_addr }}" aria-label="Copy game nested contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ gamenested_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_nested::GameNested" aria-label="View game nested source">SHOW SOURCE</button>
           </div>
         </td>
@@ -139,24 +166,11 @@
           <div class="contract-entry">
             <span class="contract-value">{{ gamemonadic_addr }}</span>
             <button type="button" class="copy-contract-btn" data-copy-value="{{ gamemonadic_addr }}" aria-label="Copy game monadic contract address">COPY ADDRESS</button>
+            {% if etherscan_base %}<a href="{{ etherscan_base }}{{ gamemonadic_addr }}" target="_blank" rel="noopener" class="etherscan-btn">ETHERSCAN</a>{% endif %}
             <button type="button" class="source-btn" data-symbol="games::game_monadic::GameMonadic" aria-label="View game monadic source">SHOW SOURCE</button>
           </div>
         </td>
       </tr>
-      {% set chain_id = deploy._chainId | default(value=0) %}
-      {% if chain_id == 1 %}
-        {% set network_name = "ETHEREUM MAINNET" %}
-      {% elif chain_id == 11155111 %}
-        {% set network_name = "SEPOLIA TESTNET" %}
-      {% elif chain_id == 17000 %}
-        {% set network_name = "HOLESKY TESTNET" %}
-      {% elif chain_id == 31337 %}
-        {% set network_name = "LOCAL (ANVIL)" %}
-      {% elif chain_id == 0 %}
-        {% set network_name = "NOT DEPLOYED" %}
-      {% else %}
-        {% set network_name = "CHAIN " ~ chain_id %}
-      {% endif %}
       <tr><td>NETWORK</td><td>{{ network_name }}</td></tr>
       <tr>
         <td>COMPILER</td>
@@ -164,7 +178,7 @@
       </tr>
       <tr>
         <td>DOCS</td>
-        <td><a href="/api/">[D] FULL API REFERENCE</a></td>
+        <td><a href="/api/">FULL API REFERENCE</a></td>
       </tr>
     </table>
   </section>
