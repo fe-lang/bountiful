@@ -29,8 +29,16 @@ pub msg RegistryMsg {
     Claim { challenge: Address },
     #[selector = sol("validateOwnsLock(address,address)")]
     ValidateOwnsLock { owner: Address, challenge: Address },
+    #[selector = sol("fund()")]
+    Fund,
     #[selector = sol("withdraw()")]
     Withdraw,
+    #[selector = sol("getPrizeAmount(address)")]
+    GetPrizeAmount { challenge: Address } -> u128,
+    #[selector = sol("getLockInfo(address)")]
+    GetLockInfo { challenge: Address } -> (Address, u256),
+    #[selector = sol("getLockDeposit()")]
+    GetLockDeposit -> u256,
     #[selector = sol("getBalance()")]
     GetBalance -> u256,
 }
@@ -217,8 +225,23 @@ pub contract BountyRegistry uses (ctx: Ctx, call: mut Call) {
             store.validate_owns_lock(challenge, owner).unwrap_or_revert()
         }
 
+        Fund {}
+
         Withdraw uses (store, ctx) {
             store.withdraw().unwrap_or_revert()
+        }
+
+        GetPrizeAmount { challenge } -> u128 uses (store) {
+            store.challenges.get(key: challenge).prize_amount
+        }
+
+        GetLockInfo { challenge } -> (Address, u256) uses (store, ctx) {
+            let lock = store.lock_store.locks.get(key: challenge)
+            (lock.claimer, lock.valid_until_block)
+        }
+
+        GetLockDeposit -> u256 uses (store) {
+            store.lock_deposit
         }
 
         GetBalance -> u256 uses () {
