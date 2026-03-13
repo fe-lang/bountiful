@@ -135,10 +135,12 @@ impl RegistryStore {
             return Err(Error::InvalidClaim)
         }
 
+        // Close challenge before external calls (Checks-Effects-Interactions).
+        // If isSolved() returns false, the revert rolls back this state change.
+        self.challenges.set(key: challenge, value: Challenge::closed())
         if !challenge.call(SolvableMsg::IsSolved {}) {
             return Err(Error::InvalidClaim)
         }
-        self.challenges.set(key: challenge, value: Challenge::closed())
         let amount = entry.prize_amount as u256
         if amount > 0 {
             let success = ops::call(ops::gas(), ctx.caller().inner, amount, 0, 0, 0, 0)
