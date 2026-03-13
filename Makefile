@@ -25,7 +25,7 @@ deploy: build
 ifndef RPC_URL
 	$(error RPC_URL is required. Usage: make deploy RPC_URL=http://localhost:8545)
 endif
-	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast $(if $(LEDGER),--ledger)
+	forge script script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast $(if $(LEDGER),--ledger) $(if $(HD_PATH),--hd-paths "$(HD_PATH)")
 
 # Pick the best deployment manifest and copy to web/ for Zola
 prepare-web:
