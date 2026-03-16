@@ -11,32 +11,84 @@
 
   {# ── ABOUT (top-left) ── #}
   <section id="about" class="c64-quadrant">
-    <h2>&gt; ABOUT</h2>
-    <p>
-      BOUNTIFUL IS A BUG BOUNTY PLATFORM FOR THE
-      <a href="https://github.com/argotorg/fe" target="_blank" rel="noopener">FE COMPILER</a>.
-    </p>
-    <p>
-      THE PLATFORM HOSTS A SERIES OF CHALLENGES THAT SHOULD NOT BE SOLVABLE.
-      IF YOU DO SOLVE A CHALLENGE, YOU HAVE FOUND A BUG EITHER IN THE COMPILER, THE CHALLENGE CONTRACT, OR THE REGISTRY IMPLEMENTATION.
-    </p>
-    <p>
-      IN ANY CASE, SOLVING A CHALLENGE ALLOWS YOU TO PERMISSIONLESSLY CLAIM A CASH PRIZE HELD IN THE REGISTRY CONTRACT.
-      FOR NOW, EACH CHALLENGE IS A VARIATION OF THE POPULAR 15-PUZZLE, DEPLOYED IN AN UNSOLVABLE STATE.
-    </p>
-    <h3>&gt; HOW TO PARTICIPATE</h3>
-    <ol>
-      <li>FIND A BUG IN THE FE COMPILER</li>
-      <li>LOCK A CHALLENGE ON-CHAIN</li>
-      <li>EXPLOIT THE BUG TO SOLVE THE PUZZLE</li>
-      <li>CLAIM YOUR BOUNTY</li>
-    </ol>
-    <p class="more-info"><a href="https://github.com/fe-lang/bountiful/blob/master/doc/bounty-hunting-guide.md" target="_blank" rel="noopener">&gt; READ THE BOUNTY HUNTING GUIDE</a></p>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="about-body">ABOUT</button>
+      <button class="tab-btn" data-tab="faq-content">FAQ</button>
+    </div>
+
+    <div id="about-body" class="tab-panel visible">
+      <p>
+        BOUNTIFUL IS A BUG BOUNTY PLATFORM FOR THE
+        <a href="https://github.com/argotorg/fe" target="_blank" rel="noopener">FE COMPILER</a>.
+      </p>
+      <p>
+        THE PLATFORM HOSTS A SERIES OF CHALLENGES THAT SHOULD NOT BE SOLVABLE.
+        IF YOU DO SOLVE A CHALLENGE, YOU HAVE FOUND A BUG EITHER IN THE COMPILER, THE CHALLENGE CONTRACT, OR THE REGISTRY IMPLEMENTATION.
+      </p>
+      <p>
+        IN ANY CASE, SOLVING A CHALLENGE ALLOWS YOU TO PERMISSIONLESSLY CLAIM A CASH PRIZE HELD IN THE REGISTRY CONTRACT.
+        FOR NOW, EACH CHALLENGE IS A VARIATION OF THE POPULAR 15-PUZZLE, DEPLOYED IN AN UNSOLVABLE STATE.
+        CHECK THE <a href="#" class="faq-link">FAQ</a> FOR MORE DETAILS.
+      </p>
+      <h3>&gt; HOW TO PARTICIPATE</h3>
+      <ol>
+        <li><a href="https://github.com/fe-lang/bountiful/blob/master/doc/bounty-hunting-guide.md" target="_blank" rel="noopener">READ THE BOUNTY HUNTING GUIDE</a></li>
+        <li>FIND A BUG IN THE FE COMPILER</li>
+        <li>LOCK A CHALLENGE ON-CHAIN</li>
+        <li>EXPLOIT THE BUG TO SOLVE THE PUZZLE</li>
+        <li>CLAIM YOUR BOUNTY</li>
+      </ol>
+    </div>
+
+    <div id="faq-content" class="tab-panel">
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> WHAT IS THE 15-PUZZLE?</button>
+        <div class="faq-answer">THE <a href="https://en.wikipedia.org/wiki/15_puzzle#Solvability" target="_blank" rel="noopener">15-PUZZLE</a> IS A CLASSIC SLIDING PUZZLE WITH TILES NUMBERED 1-15 IN A 4X4 GRID. THE GOAL IS TO ARRANGE THEM IN ORDER BY SLIDING TILES INTO THE EMPTY SPACE. ONLY TILES ADJACENT TO THE EMPTY SPACE CAN BE MOVED. OUR CHALLENGES ARE DEPLOYED IN AN UNSOLVABLE STATE — UNLESS YOU FIND A COMPILER BUG.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> IS THE PUZZLE ON THIS PAGE CONNECTED TO THE CONTRACTS?</button>
+        <div class="faq-answer">NO. THE PUZZLE ON THIS PAGE IS PURELY FOR ILLUSTRATION PURPOSES. IT DEMONSTRATES THE GAME MECHANICS BUT IS NOT CONNECTED TO ANY ON-CHAIN CONTRACT. TO ACTUALLY CLAIM A BOUNTY, YOU NEED TO INTERACT WITH THE DEPLOYED CONTRACTS DIRECTLY.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> ARE THE CONTRACTS INTENTIONALLY BUGGY?</button>
+        <div class="faq-answer">NO. THE CONTRACTS ARE WRITTEN TO BE CORRECT. HOWEVER, THEY ARE DELIBERATELY IMPLEMENTED IN DIFFERENT STYLES TO MAXIMIZE THE COMPILER'S ATTACK SURFACE. IF YOU CAN SOLVE A CHALLENGE, YOU HAVE FOUND A GENUINE BUG IN THE FE COMPILER, THE CHALLENGE CONTRACT, OR THE REGISTRY.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> WHERE CAN I FIND THE FULL SOURCE CODE?</button>
+        <div class="faq-answer">THE COMPLETE SOURCE CODE FOR ALL CONTRACTS IS AVAILABLE IN THE <a href="https://github.com/fe-lang/bountiful/tree/master/contracts/ingots/games/src" target="_blank" rel="noopener">GITHUB REPOSITORY</a>. YOU CAN ALSO BROWSE INDIVIDUAL CONTRACT SOURCE CODE IN THE SOURCE QUADRANT ON THIS PAGE.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> WHICH COMPILER VERSION SHOULD I TARGET?</button>
+        <div class="faq-answer">ALL CONTRACTS WERE COMPILED WITH <a href="https://github.com/argotorg/fe/releases/tag/v{{ config.extra.fe_version }}" target="_blank" rel="noopener">FE V{{ config.extra.fe_version | upper }}</a>. THIS IS THE VERSION YOU SHOULD INVESTIGATE FOR POTENTIAL BUGS.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> WHY ARE THERE MULTIPLE GAME CONTRACTS?</button>
+        <div class="faq-answer">EACH GAME CONTRACT IMPLEMENTS THE 15-PUZZLE USING A DIFFERENT FE LANGUAGE FEATURE (ENUMS, TRAITS, BITBOARDS, ETC). THIS BROADENS THE ATTACK SURFACE AND TESTS MORE COMPILER PATHS.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> HOW DO I CLAIM A BOUNTY?</button>
+        <div class="faq-answer">FIND A BUG THAT LETS YOU BRING A GAME INTO A STATE WHERE <code>ISSOLVED</code> RETURNS <code>TRUE</code>. FIRST ACQUIRE AN EXCLUSIVE LOCK ON THE CHALLENGE AS FRONT-RUNNING PROTECTION, THEN SUBMIT YOUR SOLUTION. THE BOUNTY IS AUTOMATICALLY TRANSFERRED TO YOUR WALLET. SEE THE <a href="https://github.com/fe-lang/bountiful/blob/master/doc/bounty-hunting-guide.md" target="_blank" rel="noopener">BOUNTY HUNTING GUIDE</a> FOR A FULL WALKTHROUGH.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> DO I NEED TO PAY TO PARTICIPATE?</button>
+        <div class="faq-answer">THERE IS NO ENTRY FEE. HOWEVER, ACQUIRING A LOCK REQUIRES A DEPOSIT OF 0.01 ETH. THE DEPOSIT IS NOT RETURNED BUT THE BOUNTY PRIZE (CURRENTLY 0.1 ETH) FAR EXCEEDS THE COST. MAKE SURE TO VERIFY YOUR EXPLOIT LOCALLY BEFORE ACQUIRING A LOCK ON-CHAIN.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> CAN SOMEONE FRONT-RUN MY SOLUTION?</button>
+        <div class="faq-answer">THE LOCKING MECHANISM PREVENTS FRONT-RUNNING. ONCE YOU LOCK A CHALLENGE, ONLY YOU CAN SUBMIT THE SOLUTION WITHIN THE LOCK PERIOD. THE LOCK DEPOSIT EXISTS TO PREVENT GRIEFING — WITHOUT IT, ANYONE COULD LOCK CHALLENGES AT NO COST TO BLOCK LEGITIMATE HUNTERS.</div>
+      </div>
+      <div class="faq-item open">
+        <button class="faq-question"><span class="faq-arrow">&gt;</span> HOW IS THE SOURCE VIEWER BUILT?</button>
+        <div class="faq-answer">THE SOURCE CODE VIEWER IN THE BOTTOM-RIGHT QUADRANT AND THE <a href="/api/">FULL API REFERENCE</a> ARE GENERATED VIA THE <code>FE DOC</code> COMMAND. IT PRODUCES EMBEDDABLE WEB COMPONENTS THAT CAN BE INTEGRATED INTO ANY WEBSITE.</div>
+      </div>
+    </div>
   </section>
 
   {# ── PLAY (top-right) ── #}
   <section id="play" class="c64-quadrant">
-    <h2>&gt; PLAY</h2>
+    <div class="tab-bar">
+      <button class="tab-btn active">PLAY</button>
+    </div>
     <div class="puzzle-controls">
       <button id="btn-random" class="c64-btn">[R] RANDOM BOARD</button>
       <button id="btn-challenge" class="c64-btn">[C] CHALLENGE BOARD</button>
@@ -53,7 +105,9 @@
   {# ── CONTRACTS (bottom-left) ── #}
   {% set deploy = load_data(path="deployment.json", required=false) %}
   <section id="contracts" class="c64-quadrant">
-    <h2>&gt; CONTRACTS</h2>
+    <div class="tab-bar">
+      <button class="tab-btn active">CONTRACTS</button>
+    </div>
     {% set chain_id = deploy._chainId | default(value=0) %}
     {% if chain_id == 1 %}
       {% set network_name = "ETHEREUM MAINNET" %}
@@ -174,7 +228,7 @@
       <tr><td>NETWORK</td><td>{{ network_name }}</td></tr>
       <tr>
         <td>COMPILER</td>
-        <td><a href="https://github.com/argotorg/fe/releases/tag/v26.0.0-alpha.10" target="_blank" rel="noopener">FE V26.0.0-ALPHA.10</a></td>
+        <td><a href="https://github.com/argotorg/fe/releases/tag/v{{ config.extra.fe_version }}" target="_blank" rel="noopener">FE V{{ config.extra.fe_version | upper }}</a></td>
       </tr>
       <tr>
         <td>DOCS</td>
@@ -185,7 +239,9 @@
 
   {# ── SOURCE VIEWER (bottom-right) ── #}
   <section id="source-viewer" class="c64-quadrant">
-    <h2>&gt; SOURCE</h2>
+    <div class="tab-bar">
+      <button class="tab-btn active">SOURCE</button>
+    </div>
     <div id="source-viewer-content" class="source-viewer-content">
       <p class="source-viewer-hint">SELECT A CONTRACT AND CLICK SHOW SOURCE TO VIEW SOURCE</p>
     </div>
@@ -195,6 +251,7 @@
 
 <footer class="c64-footer">
   <a href="https://github.com/fe-lang/bountiful" target="_blank" rel="noopener">REPO</a>
+  <a href="#" id="footer-faq-link">FAQ</a>
   <a href="/api/">API DOCS</a>
   <a href="https://fe-lang.org" target="_blank" rel="noopener">FE-LANG.ORG</a>
   <span class="c64-footer-credit">DOCS GENERATED WITH <a href="https://fe-lang.org" target="_blank" rel="noopener">FE DOC</a></span>
@@ -354,6 +411,33 @@
           button.textContent = 'COPY ADDRESS';
         }, 1200);
       }
+    });
+  });
+
+  // ── Tab switching ──
+  document.querySelectorAll('#about .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#about .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#about .tab-panel').forEach(p => p.classList.remove('visible'));
+      document.getElementById(btn.dataset.tab).classList.add('visible');
+    });
+  });
+
+  // ── FAQ links (footer + about text) ──
+  function switchToFaq(e) {
+    e.preventDefault();
+    const faqTab = document.querySelector('#about .tab-btn[data-tab="faq-content"]');
+    if (faqTab) faqTab.click();
+    document.getElementById('about').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.querySelectorAll('.faq-link').forEach(l => l.addEventListener('click', switchToFaq));
+  document.getElementById('footer-faq-link').addEventListener('click', switchToFaq);
+
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.parentElement.classList.toggle('open');
     });
   });
 

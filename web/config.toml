@@ -4,3 +4,6 @@ description = "Bug bounty platform for the Fe compiler"
 compile_sass = false
 build_search_index = false
 generate_feeds = false
+
+[extra]
+fe_version = "26.0.0-alpha.10"
