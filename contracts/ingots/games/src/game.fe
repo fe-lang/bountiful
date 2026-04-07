@@ -33,7 +33,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address, packed_board: u256) uses (mut store) {
         store.lock_validator = lock_validator
-        let board = unpack_board(packed_board)
+        let board = unpack_board(packed: packed_board)
         let mut i: u256 = 0
         while i < 16 {
             store.board.set(key: i, value: board[i as usize])
@@ -49,7 +49,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
         IsSolved -> bool uses (store) {
             let mut i: u256 = 0
             while i < 16 {
-                if store.board.get(key: i) != winning_value(i) {
+                if store.board.get(key: i) != winning_value(index: i) {
                     return false
                 }
                 i += 1
@@ -74,7 +74,7 @@ pub contract Game uses (ctx: Ctx, call: mut Call) {
             }
 
             let encoded = ADJACENCY[empty_idx as usize]
-            if !is_movable_to(encoded, index) {
+            if !is_movable_to(encoded_moves: encoded, target: index) {
                 revert(Error::NotMovable)
             }
 

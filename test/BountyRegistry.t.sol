@@ -237,6 +237,16 @@ contract BountyRegistryTest is Test {
         assertEq(bal, 3 ether, "balance after funding");
     }
 
+    function test_fundOnDeploy() public {
+        vm.deal(admin, 10 ether);
+        address addr = FeDeployer.deployFeWithValue(
+            vm, REGISTRY_BIN, abi.encode(admin, uint256(0)), 5 ether
+        );
+        IBountyRegistry registry = IBountyRegistry(addr);
+
+        assertEq(registry.getBalance(), 5 ether, "registry funded on deploy");
+    }
+
     // =========================================================================
     // Claim with expired lock
     // =========================================================================

@@ -63,7 +63,7 @@ impl Point {
 }
 
 fn winning_value_enum(index: usize) -> u256 {
-    winning_value(index as u256)
+    winning_value(index: index as u256)
 }
 
 pub msg GameEnumMsg {
@@ -85,7 +85,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address, packed_board: u256) uses (mut store) {
         store.lock_validator = lock_validator
-        let board = unpack_board(packed_board)
+        let board = unpack_board(packed: packed_board)
         let mut i: usize = 0
         while i < 16 {
             store.board[i] = board[i]
@@ -101,7 +101,7 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
         IsSolved -> bool uses (store) {
             let mut i: usize = 0
             while i < 16 {
-                if store.board[i] != winning_value_enum(i) {
+                if store.board[i] != winning_value_enum(index: i) {
                     return false
                 }
                 i += 1
@@ -127,29 +127,29 @@ pub contract GameEnum uses (ctx: Ctx, call: mut Call) {
                 j += 1
             }
 
-            let empty_pt = Point::from_index(empty_idx)
+            let empty_pt = Point::from_index(index: empty_idx)
             let mut can_swap: bool = false
 
-            if empty_pt.can_move(Direction::Up) {
-                let nb = empty_pt.neighbor(Direction::Up)
+            if empty_pt.can_move(dir: Direction::Up) {
+                let nb = empty_pt.neighbor(dir: Direction::Up)
                 if nb.to_index() == idx {
                     can_swap = true
                 }
             }
-            if empty_pt.can_move(Direction::Down) {
-                let nb = empty_pt.neighbor(Direction::Down)
+            if empty_pt.can_move(dir: Direction::Down) {
+                let nb = empty_pt.neighbor(dir: Direction::Down)
                 if nb.to_index() == idx {
                     can_swap = true
                 }
             }
-            if empty_pt.can_move(Direction::Left) {
-                let nb = empty_pt.neighbor(Direction::Left)
+            if empty_pt.can_move(dir: Direction::Left) {
+                let nb = empty_pt.neighbor(dir: Direction::Left)
                 if nb.to_index() == idx {
                     can_swap = true
                 }
             }
-            if empty_pt.can_move(Direction::Right) {
-                let nb = empty_pt.neighbor(Direction::Right)
+            if empty_pt.can_move(dir: Direction::Right) {
+                let nb = empty_pt.neighbor(dir: Direction::Right)
                 if nb.to_index() == idx {
                     can_swap = true
                 }

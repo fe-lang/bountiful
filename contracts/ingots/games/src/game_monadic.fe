@@ -5,10 +5,10 @@
 // The distinguishing feature is that moveField chains operations monadically
 // using Result<E, T>.map(F{}) and Result<E, T>.and_then(F{}) where F is a
 // struct implementing the core::functional::Fn trait. The final result is
-// consumed via .unwrap_or_revert() which reverts the EVM transaction on error.
+// consumed via .unwrap() which reverts the EVM transaction on error.
 //
 // Fe features exercised: Fn trait on structs, .map() and .and_then() on Result,
-// .unwrap_or_revert(), monadic control flow, bitwise board packing.
+// .unwrap(), monadic control flow, bitwise board packing.
 // =============================================================================
 
 use std::abi::sol
@@ -43,7 +43,7 @@ fn winning_board() -> u256 {
     let mut board: u256 = 0
     let mut i: u256 = 0
     while i < 15 {
-        board = set_cell(board, i, i + 1)
+        board = set_cell(board, index: i, value: i + 1)
         i += 1
     }
     return board
@@ -70,7 +70,7 @@ impl Fn<MoveCtx, Result<Error, MoveCtx>> for FindEmpty {
         let mut empty: u256 = 16
         let mut i: u256 = 0
         while i < 16 {
-            if get_cell(ctx.board, i) == 0 {
+            if get_cell(board: ctx.board, index: i) == 0 {
                 empty = i
             }
             i += 1
@@ -88,7 +88,7 @@ struct CheckAdjacent {}
 impl Fn<MoveCtx, Result<Error, MoveCtx>> for CheckAdjacent {
     fn call(self, _ ctx: own MoveCtx) -> Result<Error, MoveCtx> {
         let encoded: u256 = ADJACENCY[ctx.empty_idx as usize]
-        if is_movable_to(encoded, ctx.move_idx) {
+        if is_movable_to(encoded_moves: encoded, target: ctx.move_idx) {
             Ok(ctx)
         } else {
             Err(Error::NotMovable)
@@ -100,9 +100,9 @@ impl Fn<MoveCtx, Result<Error, MoveCtx>> for CheckAdjacent {
 struct DoSwap {}
 impl Fn<MoveCtx, u256> for DoSwap {
     fn call(self, _ ctx: own MoveCtx) -> u256 {
-        let val: u256 = get_cell(ctx.board, ctx.move_idx)
-        let b: u256 = set_cell(ctx.board, ctx.move_idx, 0)
-        set_cell(b, ctx.empty_idx, val)
+        let val: u256 = get_cell(board: ctx.board, index: ctx.move_idx)
+        let b: u256 = set_cell(board: ctx.board, index: ctx.move_idx, value: 0)
+        set_cell(board: b, index: ctx.empty_idx, value: val)
     }
 }
 
@@ -117,6 +117,7 @@ fn validate_move(board: u256, index: u256) -> Result<Error, MoveCtx> {
         Ok(MoveCtx { board, move_idx: index, empty_idx: 0 })
     }
 }
+
 
 // =============================================================================
 // Contract
@@ -146,7 +147,7 @@ pub contract GameMonadic uses (ctx: Ctx, call: mut Call) {
 
     recv GameMonadicMsg {
         GetBoard { index } -> u256 uses (store) {
-            get_cell(store.board, index)
+            get_cell(board: store.board, index)
         }
 
         IsSolved -> bool uses (store) {
@@ -157,11 +158,11 @@ pub contract GameMonadic uses (ctx: Ctx, call: mut Call) {
             store.lock_validator.call(LockValidatorMsg::ValidateOwnsLock { owner: ctx.caller(), challenge: ctx.address() })
 
             // Functional pipeline: validate → find empty → check adjacent → swap
-            store.board = validate_move(store.board, index)
+            store.board = validate_move(board: store.board, index)
                 .and_then(FindEmpty{})
                 .and_then(CheckAdjacent{})
                 .map(DoSwap{})
-                .unwrap_or_revert()
+                .unwrap()
         }
     }
 }

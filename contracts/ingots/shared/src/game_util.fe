@@ -50,7 +50,7 @@ pub fn decode_move(encoded: u256, slot: u256) -> u256 {
 pub fn is_movable_to(encoded_moves: u256, target: u256) -> bool {
     let mut s: u256 = 0
     while s < 4 {
-        if decode_move(encoded_moves, s) == target {
+        if decode_move(encoded: encoded_moves, slot: s) == target {
             return true
         }
         s += 1
@@ -60,71 +60,71 @@ pub fn is_movable_to(encoded_moves: u256, target: u256) -> bool {
 
 #[test]
 fn test_encode_decode_moves() uses (evm: mut Evm) {
-    let encoded = encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE)
-    assert(decode_move(encoded, 0) == 1)
-    assert(decode_move(encoded, 1) == 4)
-    assert(decode_move(encoded, 2) == INVALID_MOVE)
-    assert(decode_move(encoded, 3) == INVALID_MOVE)
+    let encoded = encode_moves(m0: 1, m1: 4, m2: INVALID_MOVE, m3: INVALID_MOVE)
+    assert(decode_move(encoded, slot: 0) == 1)
+    assert(decode_move(encoded, slot: 1) == 4)
+    assert(decode_move(encoded, slot: 2) == INVALID_MOVE)
+    assert(decode_move(encoded, slot: 3) == INVALID_MOVE)
 
-    let encoded2 = encode_moves(5, 8, 10, 13)
-    assert(decode_move(encoded2, 0) == 5)
-    assert(decode_move(encoded2, 1) == 8)
-    assert(decode_move(encoded2, 2) == 10)
-    assert(decode_move(encoded2, 3) == 13)
+    let encoded2 = encode_moves(m0: 5, m1: 8, m2: 10, m3: 13)
+    assert(decode_move(encoded: encoded2, slot: 0) == 5)
+    assert(decode_move(encoded: encoded2, slot: 1) == 8)
+    assert(decode_move(encoded: encoded2, slot: 2) == 10)
+    assert(decode_move(encoded: encoded2, slot: 3) == 13)
 }
 
 #[test]
 fn test_is_movable_to() uses (evm: mut Evm) {
     // Cell 5 neighbors: 1, 4, 6, 9
-    let encoded = encode_moves(1, 4, 6, 9)
+    let encoded = encode_moves(m0: 1, m1: 4, m2: 6, m3: 9)
 
     // Valid targets
-    assert(is_movable_to(encoded, 1))
-    assert(is_movable_to(encoded, 4))
-    assert(is_movable_to(encoded, 6))
-    assert(is_movable_to(encoded, 9))
+    assert(is_movable_to(encoded_moves: encoded, target: 1))
+    assert(is_movable_to(encoded_moves: encoded, target: 4))
+    assert(is_movable_to(encoded_moves: encoded, target: 6))
+    assert(is_movable_to(encoded_moves: encoded, target: 9))
 
     // Invalid targets
-    assert(!is_movable_to(encoded, 0))
-    assert(!is_movable_to(encoded, 2))
-    assert(!is_movable_to(encoded, 5))
-    assert(!is_movable_to(encoded, 15))
+    assert(!is_movable_to(encoded_moves: encoded, target: 0))
+    assert(!is_movable_to(encoded_moves: encoded, target: 2))
+    assert(!is_movable_to(encoded_moves: encoded, target: 5))
+    assert(!is_movable_to(encoded_moves: encoded, target: 15))
 }
 
 #[test]
 fn test_is_movable_to_with_invalid_slots() uses (evm: mut Evm) {
     // Corner cell: only 2 neighbors
-    let encoded = encode_moves(1, 4, INVALID_MOVE, INVALID_MOVE)
+    let encoded = encode_moves(m0: 1, m1: 4, m2: INVALID_MOVE, m3: INVALID_MOVE)
 
-    assert(is_movable_to(encoded, 1))
-    assert(is_movable_to(encoded, 4))
-    assert(!is_movable_to(encoded, 0))
-    assert(!is_movable_to(encoded, 5))
+    assert(is_movable_to(encoded_moves: encoded, target: 1))
+    assert(is_movable_to(encoded_moves: encoded, target: 4))
+    assert(!is_movable_to(encoded_moves: encoded, target: 0))
+    assert(!is_movable_to(encoded_moves: encoded, target: 5))
 
     // Note: INVALID_MOVE (666) IS stored in the encoded data, so is_movable_to
     // matches it. This is safe because valid cell indices are 0-15, never 666.
-    assert(is_movable_to(encoded, INVALID_MOVE))
+    assert(is_movable_to(encoded_moves: encoded, target: INVALID_MOVE))
 }
 
 #[test]
 fn test_encode_all_invalid() uses (evm: mut Evm) {
-    let encoded = encode_moves(INVALID_MOVE, INVALID_MOVE, INVALID_MOVE, INVALID_MOVE)
-    assert(decode_move(encoded, 0) == INVALID_MOVE)
-    assert(decode_move(encoded, 1) == INVALID_MOVE)
-    assert(decode_move(encoded, 2) == INVALID_MOVE)
-    assert(decode_move(encoded, 3) == INVALID_MOVE)
+    let encoded = encode_moves(m0: INVALID_MOVE, m1: INVALID_MOVE, m2: INVALID_MOVE, m3: INVALID_MOVE)
+    assert(decode_move(encoded, slot: 0) == INVALID_MOVE)
+    assert(decode_move(encoded, slot: 1) == INVALID_MOVE)
+    assert(decode_move(encoded, slot: 2) == INVALID_MOVE)
+    assert(decode_move(encoded, slot: 3) == INVALID_MOVE)
 
     // No valid moves possible
-    assert(!is_movable_to(encoded, 0))
-    assert(!is_movable_to(encoded, 15))
+    assert(!is_movable_to(encoded_moves: encoded, target: 0))
+    assert(!is_movable_to(encoded_moves: encoded, target: 15))
 }
 
 #[test]
 fn test_decode_move_all_slots() uses (evm: mut Evm) {
     // Use distinct values for each slot to verify correct extraction
-    let encoded = encode_moves(0, 7, 11, 15)
-    assert(decode_move(encoded, 0) == 0)
-    assert(decode_move(encoded, 1) == 7)
-    assert(decode_move(encoded, 2) == 11)
-    assert(decode_move(encoded, 3) == 15)
+    let encoded = encode_moves(m0: 0, m1: 7, m2: 11, m3: 15)
+    assert(decode_move(encoded, slot: 0) == 0)
+    assert(decode_move(encoded, slot: 1) == 7)
+    assert(decode_move(encoded, slot: 2) == 11)
+    assert(decode_move(encoded, slot: 3) == 15)
 }

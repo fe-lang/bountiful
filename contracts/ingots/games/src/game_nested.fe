@@ -53,11 +53,11 @@ struct Board {
 
 impl Board {
     fn get(self, row: usize, col: usize) -> u256 {
-        self.rows[row].get(col)
+        self.rows[row].get(col: col)
     }
 
     fn winning_cell(row: usize, col: usize) -> u256 {
-        winning_value((row * 4 + col) as u256)
+        winning_value(index: (row * 4 + col) as u256)
     }
 
     fn is_solved(self) -> bool {
@@ -65,7 +65,7 @@ impl Board {
         while r < 4 {
             let mut c: usize = 0
             while c < 4 {
-                if self.get(r, c) != Board::winning_cell(r, c) {
+                if self.get(row: r, col: c) != Board::winning_cell(row: r, col: c) {
                     return false
                 }
                 c += 1
@@ -80,10 +80,10 @@ impl Board {
         let mut ec: usize = 4
         let mut r: usize = 0
         while r < 4 {
-            if self.rows[r].has_value(0) {
+            if self.rows[r].has_value(val: 0) {
                 let mut c: usize = 0
                 while c < 4 {
-                    if self.rows[r].get(c) == 0 {
+                    if self.rows[r].get(col: c) == 0 {
                         er = r
                         ec = c
                     }
@@ -119,7 +119,7 @@ pub contract GameNested uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address, packed_board: u256) uses (mut store) {
         store.lock_validator = lock_validator
-        let cells = unpack_board(packed_board)
+        let cells = unpack_board(packed: packed_board)
         let mut i: usize = 0
         while i < 16 {
             let row = i / 4
@@ -136,7 +136,7 @@ pub contract GameNested uses (ctx: Ctx, call: mut Call) {
             }
             let row = (index / 4) as usize
             let col = (index % 4) as usize
-            store.board.get(row, col)
+            store.board.get(row, col: col)
         }
 
         IsSolved -> bool uses (store) {

@@ -22,7 +22,7 @@ use shared::{
 use shared::dummy_lock_validator::DummyLockValidator
 
 fn winning_value_2d(row: usize, col: usize) -> u256 {
-    winning_value((row * 4 + col) as u256)
+    winning_value(index: (row * 4 + col) as u256)
 }
 
 pub msg Game2DMsg {
@@ -44,7 +44,7 @@ pub contract Game2D uses (ctx: Ctx, call: mut Call) {
 
     init(lock_validator: Address, packed_board: u256) uses (mut store) {
         store.lock_validator = lock_validator
-        let board = unpack_board(packed_board)
+        let board = unpack_board(packed: packed_board)
         let mut i: usize = 0
         while i < 16 {
             store.board[i / 4][i % 4] = board[i]

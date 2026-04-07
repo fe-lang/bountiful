@@ -44,11 +44,19 @@ impl Error {
 
 impl AbiSize for Error {
     const ENCODED_SIZE: u256 = 32
+    const IS_DYNAMIC: bool = false
+    const NEEDS_PARENT_WRAPPER: bool = false
 }
 
 impl<A: Abi> Encode<A> for Error {
+    const DIRECT_ENCODE: bool = true
+
     fn encode<E: AbiEncoder<A>>(own self, _ e: mut E) {
         e.write_word(self.to_int())
+    }
+
+    fn encode_to_ptr(own self, _ ptr: u256) {
+        A::store_word(ptr: ptr, value: self.to_int())
     }
 }
 
@@ -74,7 +82,7 @@ impl Challenge {
 }
 
 impl WordRepr for Challenge {
-    fn from_word(word: u256) -> Self {
+    fn from_word(_ word: u256) -> Self {
         let is_open: bool = (word & 1) != 0
         let prize_amount: u128 = ((word >> 128) as u128)
         Challenge { is_open, prize_amount }
@@ -107,7 +115,7 @@ impl Lock {
 }
 
 impl WordRepr for Lock {
-    fn from_word(word: u256) -> Self {
+    fn from_word(_ word: u256) -> Self {
         let claimer = Address { inner: word >> 96 }
         let valid_until_block = word & LOCK_BLOCK_MASK
         Lock { claimer, valid_until_block }
@@ -201,13 +209,13 @@ fn test_error_to_int_all_variants() uses (evm: mut Evm) {
 #[test]
 fn test_winning_value() uses (evm: mut Evm) {
     // Cells 0-14 should have values 1-15
-    assert(winning_value(0) == 1)
-    assert(winning_value(1) == 2)
-    assert(winning_value(7) == 8)
-    assert(winning_value(13) == 14)
-    assert(winning_value(14) == 15)
+    assert(winning_value(index: 0) == 1)
+    assert(winning_value(index: 1) == 2)
+    assert(winning_value(index: 7) == 8)
+    assert(winning_value(index: 13) == 14)
+    assert(winning_value(index: 14) == 15)
     // Cell 15 is the empty cell (value 0)
-    assert(winning_value(15) == 0)
+    assert(winning_value(index: 15) == 0)
 }
 
 #[test]
@@ -268,17 +276,17 @@ fn test_lock_word_repr_empty() uses (evm: mut Evm) {
 
 #[test]
 fn test_unpack_board_solved() uses (evm: mut Evm) {
-    let board = unpack_board(SOLVED_BOARD)
+    let board = unpack_board(packed: SOLVED_BOARD)
     let mut i: usize = 0
     while i < 16 {
-        assert(board[i] == winning_value(i as u256))
+        assert(board[i] == winning_value(index: i as u256))
         i += 1
     }
 }
 
 #[test]
 fn test_unpack_board_unsolvable() uses (evm: mut Evm) {
-    let board = unpack_board(UNSOLVABLE_BOARD)
+    let board = unpack_board(packed: UNSOLVABLE_BOARD)
     // Cells 0-12: values 1-13
     let mut i: usize = 0
     while i < 13 {
@@ -293,7 +301,7 @@ fn test_unpack_board_unsolvable() uses (evm: mut Evm) {
 
 #[test]
 fn test_pack_unpack_roundtrip() uses (evm: mut Evm) {
-    let board = unpack_board(UNSOLVABLE_BOARD)
+    let board = unpack_board(packed: UNSOLVABLE_BOARD)
     let repacked = pack_board(board)
     assert(repacked == UNSOLVABLE_BOARD)
 }
