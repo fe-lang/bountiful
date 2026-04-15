@@ -241,6 +241,13 @@ ol li::before {
   padding: 6px 8px;
   margin-bottom: 4px;
   border-left: 2px solid var(--c64-border);
+  --fe-code-border: transparent;
+  --fe-code-bg: transparent;
+}
+
+.doc-impl > fe-code-block {
+  --fe-code-border: transparent;
+  --fe-code-bg: transparent;
 }
 
 .doc-sig {
@@ -257,6 +264,12 @@ ol li::before {
 
 .doc-sig .sig-link:hover {
   text-decoration: underline;
+}
+
+/* Signature code blocks in source viewer should be compact */
+.doc-field fe-code-block,
+.doc-method fe-code-block {
+  --fe-code-size: 0.6rem;
 }
 
 .doc-desc {

@@ -274,18 +274,6 @@
     document.body.removeChild(input);
   };
 
-  // Render a rich_signature array into an HTML string
-  function renderRichSig(parts) {
-    if (!parts) return '';
-    return parts.map(p => {
-      const escaped = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      if (p.link) {
-        return '<a href="#' + p.link + '" class="sig-link">' + escaped + '</a>';
-      }
-      return escaped;
-    }).join('');
-  }
-
   // Render fields and implementations below the code block
   function renderDocDetails(viewer, symbolPath) {
     const index = window.FE_DOC_INDEX;
@@ -302,9 +290,17 @@
       fields.forEach(f => {
         const div = document.createElement('div');
         div.className = 'doc-field';
-        const sig = f.rich_signature ? renderRichSig(f.rich_signature) : f.signature;
-        div.innerHTML = '<code class="doc-sig">' + sig + '</code>'
-          + (f.docs && f.docs.summary ? '<p class="doc-desc">' + f.docs.summary + '</p>' : '');
+        const cb = document.createElement('fe-code-block');
+        cb.setAttribute('lang', 'fe');
+        if (f.sig_scope) cb.setAttribute('data-scope', f.sig_scope);
+        cb.textContent = f.signature || f.name;
+        div.appendChild(cb);
+        if (f.docs && f.docs.summary) {
+          const p = document.createElement('p');
+          p.className = 'doc-desc';
+          p.textContent = f.docs.summary;
+          div.appendChild(p);
+        }
         section.appendChild(div);
       });
       viewer.appendChild(section);
@@ -316,15 +312,26 @@
       impls.forEach(impl => {
         const section = document.createElement('div');
         section.className = 'doc-impl';
-        const implSig = impl.rich_signature ? renderRichSig(impl.rich_signature) : impl.signature;
-        section.innerHTML = '<h3>&gt; <code class="doc-sig">' + implSig + '</code></h3>';
+        const implCb = document.createElement('fe-code-block');
+        implCb.setAttribute('lang', 'fe');
+        if (impl.sig_scope) implCb.setAttribute('data-scope', impl.sig_scope);
+        implCb.textContent = impl.signature || '';
+        section.appendChild(implCb);
 
         (impl.methods || []).forEach(m => {
           const div = document.createElement('div');
           div.className = 'doc-method';
-          const mSig = m.rich_signature ? renderRichSig(m.rich_signature) : m.signature;
-          div.innerHTML = '<code class="doc-sig">' + mSig + '</code>'
-            + (m.docs && m.docs.summary ? '<p class="doc-desc">' + m.docs.summary + '</p>' : '');
+          const mCb = document.createElement('fe-code-block');
+          mCb.setAttribute('lang', 'fe');
+          if (m.sig_scope) mCb.setAttribute('data-scope', m.sig_scope);
+          mCb.textContent = m.signature || m.name;
+          div.appendChild(mCb);
+          if (m.docs && m.docs.summary) {
+            const p = document.createElement('p');
+            p.className = 'doc-desc';
+            p.textContent = m.docs.summary;
+            div.appendChild(p);
+          }
           section.appendChild(div);
         });
 
@@ -334,7 +341,7 @@
   }
 
   // Show source for a given SCIP symbol in the viewer quadrant
-  function showSource(symbol, label) {
+  function showSource(symbol, label, pushHistory) {
     // Clear active button highlight (only relevant for contract table buttons)
     document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
     const matchingBtn = document.querySelector('.source-btn[data-symbol="' + symbol + '"]');
@@ -358,6 +365,10 @@
         renderDocDetails(viewer, symbol);
       });
     }
+
+    if (pushHistory) {
+      history.pushState({ symbol: symbol, label: displayName }, '', '#src/' + symbol);
+    }
   }
 
   // Source viewer: show contract source in bottom-right quadrant
@@ -368,23 +379,27 @@
 
       const row = button.closest('tr');
       const name = row ? row.querySelector('td').textContent : symbol;
-      showSource(symbol, name);
+      showSource(symbol, name, true);
     });
   });
 
-  // Intercept symbol link clicks from within fe-code-block.
-  // The component sets location.hash = "#" + docPath when a symbol is clicked.
-  // The docPath is already the format fe-code-block expects as its symbol attribute.
-  window.addEventListener('hashchange', () => {
-    const docUrl = location.hash.replace(/^#/, '');
-    if (!docUrl) return;
-
-    history.replaceState(null, '', location.pathname);
+  // Intercept fe-navigate events from fe-code-block to keep navigation
+  // within the source viewer instead of navigating to /api/
+  document.addEventListener('fe-navigate', (e) => {
+    const docPath = e.detail && e.detail.docPath;
+    if (!docPath) return;
+    e.preventDefault();
     // Doc URLs have a kind suffix like /struct, /contract, /mod — strip it
-    // to get the path that fe-code-block and FE_DOC_INDEX use.
-    const symbolPath = docUrl.replace(/\/[^/]*$/, '');
+    const symbolPath = docPath.replace(/\/[^/]*$/, '');
     const name = symbolPath.split('::').pop();
-    showSource(symbolPath, name);
+    showSource(symbolPath, name, true);
+  });
+
+  // Handle back/forward navigation
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.symbol) {
+      showSource(e.state.symbol, e.state.label, false);
+    }
   });
 
   document.querySelectorAll('.copy-contract-btn').forEach((button) => {
@@ -441,8 +456,15 @@
     });
   });
 
-  // Pre-select Registry source on load
-  const registryBtn = document.querySelector('.source-btn[data-symbol="registry::registry::BountyRegistry"]');
-  if (registryBtn) registryBtn.click();
+  // Pre-select source on load: restore from hash or default to Registry
+  if (location.hash.startsWith('#src/')) {
+    const sym = decodeURIComponent(location.hash.slice(5));
+    const name = sym.split('::').pop();
+    showSource(sym, name, false);
+    history.replaceState({ symbol: sym, label: name }, '', location.hash);
+  } else {
+    showSource('registry::registry::BountyRegistry', 'REGISTRY', false);
+    history.replaceState({ symbol: 'registry::registry::BountyRegistry', label: 'REGISTRY' }, '', '#src/registry::registry::BountyRegistry');
+  }
 </script>
 {% endblock %}
