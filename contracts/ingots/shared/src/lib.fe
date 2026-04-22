@@ -43,9 +43,8 @@ impl Error {
 }
 
 impl AbiSize for Error {
-    const ENCODED_SIZE: u256 = 32
+    const HEAD_SIZE: u256 = 32
     const IS_DYNAMIC: bool = false
-    const NEEDS_PARENT_WRAPPER: bool = false
 }
 
 impl<A: Abi> Encode<A> for Error {
