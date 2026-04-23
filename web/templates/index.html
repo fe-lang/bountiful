@@ -356,16 +356,6 @@
     codeBlock.setAttribute('line-numbers', '');
     viewer.appendChild(codeBlock);
 
-    // Render fields & implementations once doc index is available
-    if (window.FE_DOC_INDEX && window.FE_DOC_INDEX.items) {
-      renderDocDetails(viewer, symbol);
-    } else {
-      document.addEventListener('fe-web-ready', function onReady() {
-        document.removeEventListener('fe-web-ready', onReady);
-        renderDocDetails(viewer, symbol);
-      });
-    }
-
     if (pushHistory) {
       history.pushState({ symbol: symbol, label: displayName }, '', '#src/' + symbol);
     }
@@ -383,16 +373,14 @@
     });
   });
 
-  // Intercept fe-navigate events from fe-code-block to keep navigation
-  // within the source viewer instead of navigating to /api/
+  // Intercept fe-navigate events from fe-code-block and route symbol
+  // clicks to the full /api/ doc page in the same tab — source viewer
+  // is just a reading widget, the API docs are the destination.
   document.addEventListener('fe-navigate', (e) => {
     const docPath = e.detail && e.detail.docPath;
     if (!docPath) return;
     e.preventDefault();
-    // Doc URLs have a kind suffix like /struct, /contract, /mod — strip it
-    const symbolPath = docPath.replace(/\/[^/]*$/, '');
-    const name = symbolPath.split('::').pop();
-    showSource(symbolPath, name, true);
+    window.location.href = '/api/#' + docPath;
   });
 
   // Handle back/forward navigation
