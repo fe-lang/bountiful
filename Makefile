@@ -56,6 +56,7 @@ docs: prepare-web
 	cd contracts && fe doc -o ../web/static/api bundle
 	cd contracts && fe doc -o ../web/static/api static
 	sed -i 's/Fe Docs/Bountiful Docs/g; s/Fe Documentation/Bountiful Documentation/g' web/static/api/index.html
+	sed -i 's|<link rel="stylesheet" href="fe-highlight.css">|<link rel="stylesheet" href="fe-highlight.css">\n  <link rel="stylesheet" href="../css/api-theme.css">|' web/static/api/index.html
 
 # Remove all build artifacts
 clean:

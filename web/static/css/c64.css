@@ -5,13 +5,13 @@
   --c64-text: #DDD6F3;
   --c64-white: #FFFFFF;
   --c64-dark: #2B1E5C;
-  --font: 'Press Start 2P', monospace;
+  --font: 'Silkscreen', monospace;
 
   /* Fe web component theming */
   --fe-code-bg: #2B1E5C;
   --fe-code-border: #7869C4;
   --fe-code-text: #C8BFE7;
-  --fe-code-font: 'Press Start 2P', monospace;
+  --fe-code-font: 'Silkscreen', monospace;
   --fe-code-size: 0.6rem;
   --fe-code-line-height: 1.8;
   --fe-code-line-number: #7869C4;
@@ -34,7 +34,7 @@
 
 /* ── BASE ── */
 html {
-  font-size: 14px;
+  font-size: 18px;
 }
 
 body {
@@ -42,8 +42,35 @@ body {
   font-family: var(--font);
   color: var(--c64-text);
   line-height: 1.8;
+  letter-spacing: -0.06em;
   height: 100vh;
   overflow: hidden;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  text-rendering: geometricPrecision;
+  /* Blend scrollbars with the C64 palette */
+  scrollbar-width: thin;
+  scrollbar-color: var(--c64-border) var(--c64-bg);
+}
+
+/* Webkit scrollbars — match the CRT palette */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--c64-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c64-border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c64-text);
+}
+::-webkit-scrollbar-corner {
+  background: var(--c64-bg);
 }
 
 /* ── CRT BORDER / FRAME ── */
@@ -92,6 +119,7 @@ body {
 
 .c64-header .stars {
   color: var(--c64-white);
+  font-family: 'Press Start 2P', monospace;
   font-size: 1rem;
   margin-bottom: 4px;
 }
@@ -226,57 +254,6 @@ ol li::before {
 #source-viewer {
   display: flex;
   flex-direction: column;
-}
-
-/* ── DOC DETAILS (fields & impls in source viewer) ── */
-.doc-fields,
-.doc-impl {
-  margin-top: 12px;
-  border-top: 1px solid var(--c64-dark);
-  padding-top: 8px;
-}
-
-.doc-field,
-.doc-method {
-  padding: 6px 8px;
-  margin-bottom: 4px;
-  border-left: 2px solid var(--c64-border);
-  --fe-code-border: transparent;
-  --fe-code-bg: transparent;
-}
-
-.doc-impl > fe-code-block {
-  --fe-code-border: transparent;
-  --fe-code-bg: transparent;
-}
-
-.doc-sig {
-  font-family: var(--font);
-  font-size: 0.65rem;
-  color: var(--c64-text);
-  word-break: break-all;
-}
-
-.doc-sig .sig-link {
-  color: var(--c64-white);
-  text-decoration: none;
-}
-
-.doc-sig .sig-link:hover {
-  text-decoration: underline;
-}
-
-/* Signature code blocks in source viewer should be compact */
-.doc-field fe-code-block,
-.doc-method fe-code-block {
-  --fe-code-size: 0.6rem;
-}
-
-.doc-desc {
-  font-size: 0.65rem;
-  margin-top: 4px;
-  margin-bottom: 0;
-  opacity: 0.7;
 }
 
 /* ── GLOBAL FOOTER ── */
@@ -570,8 +547,8 @@ ol li::before {
   display: block;
 }
 
-/* ── RESPONSIVE: single column on small screens ── */
-@media (max-width: 768px) {
+/* ── RESPONSIVE: single column on narrow viewports ── */
+@media (max-width: 1024px) {
   body {
     height: auto;
     overflow: auto;
@@ -599,7 +576,7 @@ ol li::before {
   }
 
   html {
-    font-size: 12px;
+    font-size: 22px;
   }
 
   .puzzle-board {

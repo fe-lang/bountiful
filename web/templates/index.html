@@ -274,72 +274,6 @@
     document.body.removeChild(input);
   };
 
-  // Render fields and implementations below the code block
-  function renderDocDetails(viewer, symbolPath) {
-    const index = window.FE_DOC_INDEX;
-    if (!index || !index.items) return;
-    const item = index.items.find(i => i.path === symbolPath);
-    if (!item) return;
-
-    // Fields
-    const fields = (item.children || []).filter(c => c.kind === 'field');
-    if (fields.length > 0) {
-      const section = document.createElement('div');
-      section.className = 'doc-fields';
-      section.innerHTML = '<h3>&gt; FIELDS</h3>';
-      fields.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'doc-field';
-        const cb = document.createElement('fe-code-block');
-        cb.setAttribute('lang', 'fe');
-        if (f.sig_scope) cb.setAttribute('data-scope', f.sig_scope);
-        cb.textContent = f.signature || f.name;
-        div.appendChild(cb);
-        if (f.docs && f.docs.summary) {
-          const p = document.createElement('p');
-          p.className = 'doc-desc';
-          p.textContent = f.docs.summary;
-          div.appendChild(p);
-        }
-        section.appendChild(div);
-      });
-      viewer.appendChild(section);
-    }
-
-    // Implementations
-    const impls = item.trait_impls || [];
-    if (impls.length > 0) {
-      impls.forEach(impl => {
-        const section = document.createElement('div');
-        section.className = 'doc-impl';
-        const implCb = document.createElement('fe-code-block');
-        implCb.setAttribute('lang', 'fe');
-        if (impl.sig_scope) implCb.setAttribute('data-scope', impl.sig_scope);
-        implCb.textContent = impl.signature || '';
-        section.appendChild(implCb);
-
-        (impl.methods || []).forEach(m => {
-          const div = document.createElement('div');
-          div.className = 'doc-method';
-          const mCb = document.createElement('fe-code-block');
-          mCb.setAttribute('lang', 'fe');
-          if (m.sig_scope) mCb.setAttribute('data-scope', m.sig_scope);
-          mCb.textContent = m.signature || m.name;
-          div.appendChild(mCb);
-          if (m.docs && m.docs.summary) {
-            const p = document.createElement('p');
-            p.className = 'doc-desc';
-            p.textContent = m.docs.summary;
-            div.appendChild(p);
-          }
-          section.appendChild(div);
-        });
-
-        viewer.appendChild(section);
-      });
-    }
-  }
-
   // Show source for a given SCIP symbol in the viewer quadrant
   function showSource(symbol, label, pushHistory) {
     // Clear active button highlight (only relevant for contract table buttons)
@@ -356,16 +290,6 @@
     codeBlock.setAttribute('line-numbers', '');
     viewer.appendChild(codeBlock);
 
-    // Render fields & implementations once doc index is available
-    if (window.FE_DOC_INDEX && window.FE_DOC_INDEX.items) {
-      renderDocDetails(viewer, symbol);
-    } else {
-      document.addEventListener('fe-web-ready', function onReady() {
-        document.removeEventListener('fe-web-ready', onReady);
-        renderDocDetails(viewer, symbol);
-      });
-    }
-
     if (pushHistory) {
       history.pushState({ symbol: symbol, label: displayName }, '', '#src/' + symbol);
     }
@@ -381,18 +305,6 @@
       const name = row ? row.querySelector('td').textContent : symbol;
       showSource(symbol, name, true);
     });
-  });
-
-  // Intercept fe-navigate events from fe-code-block to keep navigation
-  // within the source viewer instead of navigating to /api/
-  document.addEventListener('fe-navigate', (e) => {
-    const docPath = e.detail && e.detail.docPath;
-    if (!docPath) return;
-    e.preventDefault();
-    // Doc URLs have a kind suffix like /struct, /contract, /mod — strip it
-    const symbolPath = docPath.replace(/\/[^/]*$/, '');
-    const name = symbolPath.split('::').pop();
-    showSource(symbolPath, name, true);
   });
 
   // Handle back/forward navigation
