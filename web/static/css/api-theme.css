@@ -1,0 +1,165 @@
+/* Bountiful C64 theme for the generated /api docs.
+   Uses the theming knobs exposed by fe-web's styles.css — override the
+   CSS custom properties and you retheme the whole viewer. */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap');
+
+/* Apply C64 palette + pixel rendering in all modes.
+   Selectors mirror fe-web's so we win on specificity for dark mode. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* Palette */
+  --bg: #40318D;
+  --bg-secondary: #2B1E5C;
+  --text: #DDD6F3;
+  --text-muted: #9E90D6;
+  --border: #7869C4;
+  --accent: #FFD866;
+  --accent-hover: #FFEF8F;
+  --text-accent: #FFD866;
+  --code-bg: #241750;
+
+  /* Highlight colors — tuned for the purple backdrop */
+  --hl-ref-bg: rgba(255, 216, 102, 0.10);
+  --hl-def-bg: rgba(255, 216, 102, 0.22);
+  --hl-def-underline: rgba(255, 216, 102, 0.55);
+  --target-bg: color-mix(in srgb, #FFD866 15%, #2B1E5C);
+
+  /* Root size: bump from the browser default 16px so everything rem-based
+   scales up together. Silkscreen at small rem values gets illegible. */
+}
+html { font-size: 18px; }
+:root, :root[data-theme="light"], :root[data-theme="dark"] {
+  /* Fonts — Silkscreen everywhere */
+  --fe-body-font: 'Silkscreen', 'Press Start 2P', monospace;
+  --fe-heading-font: 'Silkscreen', 'Press Start 2P', monospace;
+  --fe-mono-font: 'Silkscreen', 'Press Start 2P', monospace;
+  --fe-code-font: 'Silkscreen', 'Press Start 2P', monospace;
+
+  /* Pixel / retro rendering */
+  --fe-heading-weight: 400;
+  --fe-body-weight: 400;
+  --fe-sidebar-weight: 400;
+  --fe-current-weight: 400;
+  --fe-font-smoothing: none;
+  --fe-moz-font-smoothing: grayscale;
+  --fe-text-rendering: geometricPrecision;
+  --fe-letter-spacing: -0.02em;
+  /* Simulate bold via text-shadow — widens strokes without changing advance.
+     --fe-heading-text-shadow applies to h1-h6, --fe-emphasis-text-shadow
+     applies to the current sidebar item. */
+  --fe-heading-text-shadow: 1px 0 0 currentColor;
+  --fe-emphasis-text-shadow: 1px 0 0 currentColor;
+
+  /* Let content fill; 900px cap leaves empty space with pixel sidebar */
+  --fe-content-max-width: none;
+
+  /* Silkscreen is wider per-glyph than proportional sans, so give the
+     sidebar a bit more room than the 25vw default. 30vw keeps the
+     sidebar from dominating while still fitting most symbols; items
+     beyond that width truncate with `…` via the rule below. */
+  --fe-sidebar-max-width: 30vw;
+
+  /* fe-code-block shadow-DOM theming (inherits custom props into shadow) */
+  --fe-code-bg: #241750;
+  --fe-code-border: #7869C4;
+  --fe-code-text: #DDD6F3;
+  --fe-code-line-number: #7869C4;
+  --fe-code-size: 0.9rem;
+  --fe-code-line-height: 1.6;
+  --fe-code-radius: 3px;
+
+  /* Syntax highlight palette */
+  --fe-hl-keyword: #FF79C6;
+  --fe-hl-type: #FFD866;
+  --fe-hl-type-interface: #F8C8DC;
+  --fe-hl-type-variant: #FFB86C;
+  --fe-hl-function: #8BE9FD;
+  --fe-hl-string: #A6E22E;
+  --fe-hl-number: #FFB86C;
+  --fe-hl-comment: #7869C4;
+  --fe-hl-operator: #DDD6F3;
+  --fe-hl-punctuation: #DDD6F3;
+}
+
+/* Match fe-web's dark-mode media-query selector so we win there too */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #40318D;
+    --bg-secondary: #2B1E5C;
+    --text: #DDD6F3;
+    --text-muted: #9E90D6;
+    --border: #7869C4;
+    --accent: #FFD866;
+    --accent-hover: #FFEF8F;
+    --text-accent: #FFD866;
+    --code-bg: #241750;
+    --hl-ref-bg: rgba(255, 216, 102, 0.10);
+    --hl-def-bg: rgba(255, 216, 102, 0.22);
+    --hl-def-underline: rgba(255, 216, 102, 0.55);
+    --target-bg: color-mix(in srgb, #FFD866 15%, #2B1E5C);
+  }
+}
+
+/* Bountiful-specific UI sugar that isn't covered by fe-web's knobs.
+   Keep this section thin — everything theme-parameterizable belongs above. */
+
+/* Explicit arrow marker for current sidebar item — a11y / colorblind-safe.
+   Every row reserves an invisible spacer so state changes don't reflow; the
+   current row just turns the glyph visible. */
+.fe-nav-items a::before,
+.fe-nav-mod-name a::before {
+  content: "▸";
+  display: inline-block;
+  color: transparent;
+  margin-right: 0.35em;
+  margin-left: -0.5em;
+  width: 0.7em;
+  flex-shrink: 0;
+}
+
+.fe-nav-items li.current > a::before,
+.fe-nav-mod-name.current > a::before {
+  color: var(--accent);
+}
+
+/* Pixel-style drop shadow on page h1 (additive to --fe-heading-text-shadow) */
+article h1,
+.item-header h1 {
+  color: var(--accent);
+  text-shadow:
+    1px 0 0 currentColor,
+    2px 2px 0 var(--bg-secondary);
+}
+
+article h2 {
+  color: var(--accent);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.25rem;
+}
+
+/* Member cards: CRT-phosphor inner glow */
+.member-item {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg-secondary) 60%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Truncate long sidebar names with `…` instead of forcing the sidebar
+   to grow indefinitely. Silkscreen's wide glyphs mean some `test_*`
+   names exceed 50vw — truncation keeps the sidebar usable; horizontal
+   scroll inside the sidebar (overflow-x: auto from fe-web) remains as
+   the fallback if the user wants to see the full name. */
+.fe-nav-items a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fe-nav-items a > :last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
