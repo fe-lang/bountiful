@@ -6,6 +6,48 @@ import {FeDeployer} from "../src/FeDeployer.sol";
 import {IBountyRegistry} from "../src/interfaces/IBountyRegistry.sol";
 import {UNSOLVABLE_BOARD} from "../src/Constants.sol";
 
+/// Deploys the BountyRegistry plus all Game variants and registers each game
+/// with a prize on the freshly deployed registry. Writes a manifest JSON to
+/// deployments/<chainId>_<block>.json.
+///
+/// Required env vars:
+///   ETH_RPC_URL              RPC endpoint (consumed by the `mainnet` alias in foundry.toml,
+///                            or pass --rpc-url <url> directly).
+///
+/// Optional env vars:
+///   LOCK_DEPOSIT             Wei required to lock a challenge (default: 0.01 ether).
+///   PRIZE_AMOUNT             Wei prize per registered game (default: 0.1 ether).
+///
+/// Signer selection:
+///   Ledger mode:  set DEPLOYER_ADDRESS to the deployer address, pass --ledger on the CLI.
+///                 The script auto-detects ledger mode when DEPLOYER_ADDRESS is set.
+///   Local mode:   set DEPLOYER_PRIVATE_KEY (used when DEPLOYER_ADDRESS is unset), no flag needed.
+///
+/// 1) Dry-run against a mainnet fork (no on-chain tx, no signature prompt):
+///      ETH_RPC_URL=<url> \
+///      DEPLOYER_ADDRESS=0x<deployer> \
+///        forge script script/Deploy.s.sol --rpc-url mainnet
+///
+///    In dry-run mode --ledger is NOT required: forge only simulates, it never
+///    asks the device to sign anything. Use this to verify gas estimates and
+///    that all eight contracts deploy + register cleanly.
+///
+/// 2) Real broadcast via Ledger (mainnet):
+///      ETH_RPC_URL=<url> \
+///      DEPLOYER_ADDRESS=0x<deployer> \
+///        forge script script/Deploy.s.sol --rpc-url mainnet --broadcast --ledger
+///
+///    Add --hd-paths "m/44'/60'/0'/0/0" if the deployer sits on a non-default
+///    derivation path. Plug in the Ledger, unlock it, open the Ethereum app,
+///    and confirm each tx on-device (one per contract + one per registerChallenge).
+///
+/// 3) Real broadcast with a local key (e.g. against Anvil):
+///      ETH_RPC_URL=http://localhost:8545 \
+///      DEPLOYER_PRIVATE_KEY=0x<key> \
+///        forge script script/Deploy.s.sol --rpc-url $ETH_RPC_URL --broadcast
+///
+/// The Makefile target `make deploy RPC_URL=... [LEDGER=1 DEPLOYER_ADDRESS=0x...]`
+/// wraps the broadcast invocation; see Makefile:24.
 contract Deploy is Script {
     string constant REGISTRY_BIN = "contracts/out/BountyRegistry.bin";
     string constant GAME_BIN = "contracts/out/Game.bin";
@@ -17,8 +59,6 @@ contract Deploy is Script {
     string constant GAME_MONADIC_BIN = "contracts/out/GameMonadic.bin";
 
     function run() external {
-        // Ledger mode: set DEPLOYER_ADDRESS (used with --ledger flag)
-        // Local mode:  set DEPLOYER_PRIVATE_KEY (used for Anvil / testing)
         address admin;
         bool useLedger = vm.envOr("DEPLOYER_ADDRESS", address(0)) != address(0);
         if (useLedger) {
