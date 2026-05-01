@@ -17,6 +17,9 @@ import {UNSOLVABLE_BOARD} from "../src/Constants.sol";
 /// Optional env vars:
 ///   LOCK_DEPOSIT             Wei required to lock a challenge (default: 0.01 ether).
 ///   PRIZE_AMOUNT             Wei prize per registered game (default: 0.1 ether).
+///   INITIAL_FUND             Wei sent along with the BountyRegistry constructor
+///                            so the registry is funded on deploy (default: 1 ether).
+///                            Must be >= sum of prize payouts you expect to settle.
 ///
 /// Signer selection:
 ///   Ledger mode:  set DEPLOYER_ADDRESS to the deployer address, pass --ledger on the CLI.
@@ -72,14 +75,16 @@ contract Deploy is Script {
 
         uint256 lockDeposit = vm.envOr("LOCK_DEPOSIT", uint256(0.01 ether));
         uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(0.25 ether)));
+        uint256 initialFund = vm.envOr("INITIAL_FUND", uint256(1 ether));
 
         console.log("Deployer / Admin:", admin);
         console.log("Lock deposit:", lockDeposit);
         console.log("Prize per challenge:", prizeAmount);
+        console.log("Initial fund:", initialFund);
 
-        // 1. Deploy BountyRegistry
-        address registryAddr = FeDeployer.deployFeWithArgs(
-            vm, REGISTRY_BIN, abi.encode(admin, lockDeposit)
+        // 1. Deploy BountyRegistry (funded on deploy via constructor msg.value)
+        address registryAddr = FeDeployer.deployFeWithValue(
+            vm, REGISTRY_BIN, abi.encode(admin, lockDeposit), initialFund
         );
         IBountyRegistry registry = IBountyRegistry(registryAddr);
         console.log("BountyRegistry:", registryAddr);
