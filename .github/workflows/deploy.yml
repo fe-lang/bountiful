@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FE_VERSION: "26.0.0-alpha.9"
+  FE_VERSION: "26.1.0"
   ZOLA_VERSION: "0.19.2"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
