@@ -16,7 +16,7 @@ import {UNSOLVABLE_BOARD} from "../src/Constants.sol";
 ///
 /// Optional env vars:
 ///   LOCK_DEPOSIT             Wei required to lock a challenge (default: 0.01 ether).
-///   PRIZE_AMOUNT             Wei prize per registered game (default: 0.1 ether).
+///   PRIZE_AMOUNT             Wei prize per registered game (default: 0.25 ether).
 ///   INITIAL_FUND             Wei sent along with the BountyRegistry constructor
 ///                            so the registry is funded on deploy (default: 1 ether).
 ///                            Must be >= sum of prize payouts you expect to settle.
