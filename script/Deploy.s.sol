@@ -71,7 +71,7 @@ contract Deploy is Script {
         }
 
         uint256 lockDeposit = vm.envOr("LOCK_DEPOSIT", uint256(0.01 ether));
-        uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(0.1 ether)));
+        uint128 prizeAmount = uint128(vm.envOr("PRIZE_AMOUNT", uint256(0.25 ether)));
 
         console.log("Deployer / Admin:", admin);
         console.log("Lock deposit:", lockDeposit);
