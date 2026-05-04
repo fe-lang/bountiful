@@ -1,0 +1,1544 @@
+/* Page layout variables. Code/syntax variables in fe-highlight.css. */
+
+/* Safari/WebKit needs this to suppress native disclosure triangles */
+summary::-webkit-details-marker { display: none; }
+
+/* Light mode (default).
+   Theming knobs for downstream consumers — override any of these in a
+   stylesheet loaded *after* this one to customize the doc viewer. */
+:root {
+    /* Palette */
+    --bg: #ffffff;
+    --bg-secondary: #f8fafc;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --accent: #4f46e5;
+    --accent-hover: #6366f1;
+    --text-accent: #4f46e5;
+    --border: #e2e8f0;
+    --code-bg: var(--fe-code-bg);
+
+    /* Fonts — these variables drive every text surface so themers can
+       swap a single value to retheme. */
+    --fe-body-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --fe-heading-font: var(--fe-body-font);
+    --fe-mono-font: "JetBrains Mono", "Fira Code", monospace;
+
+    /* Weights — pixel-style fonts may want 400 everywhere to avoid the
+       wider-at-bold jump that bitmap faces introduce. */
+    --fe-body-weight: 400;
+    --fe-heading-weight: 600;
+    /* Sidebar chrome (module names, kind headers, current-item accent).
+       Pixel themes pin to 400 and use --fe-emphasis-text-shadow for visual
+       weight instead, since bitmap bold faces change glyph advance. */
+    --fe-sidebar-weight: 600;
+    --fe-current-weight: 600;
+
+    /* Pixel / retro rendering knobs. Defaults are browser-native. */
+    --fe-font-smoothing: auto;          /* maps to -webkit-font-smoothing */
+    --fe-moz-font-smoothing: auto;      /* maps to -moz-osx-font-smoothing */
+    --fe-text-rendering: auto;
+    --fe-heading-text-shadow: none;
+    --fe-emphasis-text-shadow: none;    /* applied to current nav items */
+    --fe-letter-spacing: normal;
+
+    /* Layout */
+    --fe-content-max-width: 900px;
+    --fe-sidebar-min-width: 240px;
+    --fe-sidebar-max-width: 25vw;
+
+    /* Highlight colors driven by accent */
+    --hl-ref-bg: rgba(79, 70, 229, 0.08);
+    --hl-def-bg: rgba(79, 70, 229, 0.15);
+    --hl-def-underline: rgba(79, 70, 229, 0.4);
+    --target-bg: rgba(79, 70, 229, 0.06);
+}
+
+/* Dark mode via OS preference */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #1e1e2e;
+        --bg-secondary: #181825;
+        --text: #cdd6f4;
+        --text-muted: #9399b2;
+        --accent: #89b4fa;
+        --accent-hover: #b4d0fb;
+        --text-accent: #89b4fa;
+        --border: #313244;
+        --code-bg: var(--fe-code-bg);
+
+        --hl-ref-bg: rgba(99, 102, 241, 0.18);
+        --hl-def-bg: rgba(99, 102, 241, 0.30);
+        --hl-def-underline: rgba(99, 102, 241, 0.6);
+        --target-bg: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+    }
+}
+
+/* Dark mode via explicit toggle */
+:root[data-theme="dark"] {
+    --bg: #1e1e2e;
+    --bg-secondary: #181825;
+    --text: #cdd6f4;
+    --text-muted: #9399b2;
+    --accent: #89b4fa;
+    --accent-hover: #b4d0fb;
+    --text-accent: #89b4fa;
+    --border: #313244;
+    --code-bg: var(--fe-code-bg);
+
+    --hl-ref-bg: rgba(99, 102, 241, 0.18);
+    --hl-def-bg: rgba(99, 102, 241, 0.30);
+    --hl-def-underline: rgba(99, 102, 241, 0.6);
+    --target-bg: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--fe-body-font);
+    font-weight: var(--fe-body-weight);
+    letter-spacing: var(--fe-letter-spacing);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--bg);
+    -webkit-font-smoothing: var(--fe-font-smoothing);
+    -moz-osx-font-smoothing: var(--fe-moz-font-smoothing);
+    text-rendering: var(--fe-text-rendering);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--fe-heading-font);
+    font-weight: var(--fe-heading-weight);
+    text-shadow: var(--fe-heading-text-shadow);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--bg);
+}
+
+.doc-layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    min-height: 100vh;
+}
+
+.doc-layout > .doc-sidebar,
+.doc-layout > nav {
+    width: max-content;
+    min-width: var(--fe-sidebar-min-width);
+    max-width: var(--fe-sidebar-max-width);
+}
+
+.doc-sidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 0.75rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-header h1 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.sidebar-header h1 a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+#search {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+
+#search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.search-result {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg);
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.search-result:hover {
+    background: var(--border);
+}
+
+.sidebar-nav {
+    margin-top: 1rem;
+}
+
+.sidebar-separator {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.75rem 0;
+}
+
+.nav-item {
+    margin-bottom: 0.5rem;
+}
+
+.nav-module {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-module:hover {
+    color: var(--accent);
+}
+
+.nav-items {
+    list-style: none;
+    margin-left: 1rem;
+    margin-top: 0.25rem;
+}
+
+.nav-items li {
+    margin: 0.25rem 0;
+}
+
+.nav-items a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-items a:hover {
+    color: var(--text);
+}
+
+.nav-items li.current a {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Grouped navigation by kind */
+.nav-groups {
+    margin-left: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.nav-kind-group {
+    margin-bottom: 0.75rem;
+}
+
+.nav-kind-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+    padding-left: 0.5rem;
+}
+
+.nav-kind-group .nav-items {
+    margin-left: 0.5rem;
+}
+
+.doc-content {
+    padding: 1.5rem 2rem;
+    max-width: var(--fe-content-max-width);
+}
+
+/* Breadcrumb navigation */
+.breadcrumb {
+    font-family: var(--fe-mono-font);
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.breadcrumb-link {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-sep {
+    color: var(--text-muted);
+    margin: 0 0.125rem;
+}
+
+.breadcrumb-current {
+    color: var(--text);
+}
+
+.item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.item-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.item-header h1 {
+    font-size: 1.75rem;
+    margin: 0;
+}
+
+.src-link {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--fe-mono-font);
+}
+
+.src-link:hover {
+    color: var(--accent);
+}
+
+.source-toggle {
+    margin-top: 0.25rem;
+}
+.source-toggle summary {
+    cursor: pointer;
+    list-style: none;
+}
+.source-toggle summary::-webkit-details-marker {
+    display: none;
+}
+.source-toggle summary::before {
+    content: "\25b6\00a0";
+    font-size: 0.7em;
+    transition: transform 0.15s;
+    display: inline-block;
+}
+.source-toggle[open] summary::before {
+    transform: rotate(90deg);
+}
+.source-toggle fe-code-block {
+    margin-top: 0.5rem;
+}
+
+/* Limit source view height for large items */
+.source-toggle[open] fe-code-block {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.kind-badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: var(--border);
+    color: var(--text-muted);
+    text-transform: lowercase;
+}
+
+/* Light mode badges */
+.kind-badge.struct { background: #dcfce7; color: #166534; }
+.kind-badge.enum { background: #fef3c7; color: #92400e; }
+.kind-badge.function, .kind-badge.fn { background: #dbeafe; color: #1e40af; }
+.kind-badge.trait { background: #f3e8ff; color: #7e22ce; }
+.kind-badge.module, .kind-badge.mod { background: #e0e7ff; color: #3730a3; }
+.kind-badge.contract { background: #fed7aa; color: #9a3412; }
+.kind-badge.type { background: #ccfbf1; color: #115e59; }
+.kind-badge.const { background: #ede9fe; color: #5b21b6; }
+.kind-badge.msg { background: #fce7f3; color: #9d174d; }
+.kind-badge.msg_variant { background: #fce7f3; color: #9d174d; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .kind-badge.struct { background: #2d4a3e; color: #7ee787; }
+    :root:not([data-theme="light"]) .kind-badge.enum { background: #3d3a2d; color: #e7c77e; }
+    :root:not([data-theme="light"]) .kind-badge.function,
+    :root:not([data-theme="light"]) .kind-badge.fn { background: #2d3a4a; color: #7eb8e7; }
+    :root:not([data-theme="light"]) .kind-badge.trait { background: #4a2d4a; color: #e77ee7; }
+    :root:not([data-theme="light"]) .kind-badge.module,
+    :root:not([data-theme="light"]) .kind-badge.mod { background: #2d2d4a; color: #9d7ee7; }
+    :root:not([data-theme="light"]) .kind-badge.contract { background: #4a3d2d; color: #e7b87e; }
+    :root:not([data-theme="light"]) .kind-badge.type { background: #2d4a4a; color: #7ee7e7; }
+    :root:not([data-theme="light"]) .kind-badge.const { background: #3a2d4a; color: #b87ee7; }
+    :root:not([data-theme="light"]) .kind-badge.msg,
+    :root:not([data-theme="light"]) .kind-badge.msg_variant { background: #4a2d3a; color: #e77eae; }
+}
+:root[data-theme="dark"] .kind-badge.struct { background: #2d4a3e; color: #7ee787; }
+:root[data-theme="dark"] .kind-badge.enum { background: #3d3a2d; color: #e7c77e; }
+:root[data-theme="dark"] .kind-badge.function,
+:root[data-theme="dark"] .kind-badge.fn { background: #2d3a4a; color: #7eb8e7; }
+:root[data-theme="dark"] .kind-badge.trait { background: #4a2d4a; color: #e77ee7; }
+:root[data-theme="dark"] .kind-badge.module,
+:root[data-theme="dark"] .kind-badge.mod { background: #2d2d4a; color: #9d7ee7; }
+:root[data-theme="dark"] .kind-badge.contract { background: #4a3d2d; color: #e7b87e; }
+:root[data-theme="dark"] .kind-badge.type { background: #2d4a4a; color: #7ee7e7; }
+:root[data-theme="dark"] .kind-badge.const { background: #3a2d4a; color: #b87ee7; }
+:root[data-theme="dark"] .kind-badge.msg,
+:root[data-theme="dark"] .kind-badge.msg_variant { background: #4a2d3a; color: #e77eae; }
+
+/* Main item signature at top of page. The wrapper provides the visual
+   box; the inner fe-code-block border is suppressed to avoid doubling. */
+.signature-wrapper {
+    display: flex;
+    align-items: baseline;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 1rem;
+    --fe-code-bg: transparent;
+    --fe-code-border: transparent;
+}
+
+.signature-wrapper fe-code-block {
+    flex: 1;
+    margin: 0;
+}
+
+.signature-wrapper:hover .anchor {
+    opacity: 1;
+}
+
+/* Type links in signatures and code blocks — underline indicates clickable,
+   color is inherited from the syntax highlight class (hl-type, hl-type-builtin, etc.) */
+.type-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: currentColor;
+    cursor: pointer;
+}
+
+.type-link:hover {
+    text-decoration-style: dashed;
+}
+
+
+.docs {
+    margin-bottom: 1.25rem;
+}
+
+.docs p {
+    margin-bottom: 1rem;
+}
+
+.docs code {
+    background: var(--code-bg);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-family: var(--fe-mono-font);
+    font-size: 0.875em;
+}
+
+h2 {
+    font-size: 1.25rem;
+    margin: 1rem 0 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.members {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.members dt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.members dd {
+    margin-left: 2rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+/* Children sections (Fields, Variants, Methods) */
+.children-sections {
+    margin-top: 1.25rem;
+}
+
+.children-section {
+    margin-bottom: 1rem;
+}
+
+.children-section:last-child {
+    margin-bottom: 0;
+}
+
+.item-list {
+    list-style: none;
+}
+
+.item-list li {
+    margin: 0.5rem 0;
+}
+
+.item-list a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.item-list a:hover {
+    text-decoration: underline;
+}
+
+.not-found {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.not-found h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.not-found p {
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.not-found code {
+    background: var(--code-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: var(--fe-mono-font);
+}
+
+.not-found-hint {
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Implementations sections */
+.implementations {
+    margin-top: 1.25rem;
+}
+
+.inherent-impls,
+.trait-impls {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+
+.inherent-impls h2,
+.trait-impls h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+}
+
+.impl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Impl block styling */
+.impl-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+    margin-bottom: 0.75rem;
+    border-left: 3px solid transparent;
+}
+
+.impl-block h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.impl-block h3 a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.impl-block h3 a:hover {
+    text-decoration: underline;
+}
+
+.impl-block .signature {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+/* Rustdoc-inspired toggle/collapsible sections */
+.toggle {
+    margin-bottom: 0.75rem;
+}
+
+.toggle > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+}
+
+.toggle > summary::-webkit-details-marker {
+    display: none;
+}
+
+.toggle > summary::before {
+    content: '\25b6';
+    flex-shrink: 0;
+    width: 1rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+}
+
+.toggle[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+/* Anchor links — uniform § link that appears on hover.
+   Always inline, always the same size, placed after text content. */
+.anchor {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.75em;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.impl-block:hover .anchor,
+.member-item:hover > .member-header .anchor,
+.method-item:hover > summary .anchor,
+.implementor-item:hover .anchor,
+.item-header:hover .anchor,
+h2:hover .anchor {
+    opacity: 1;
+}
+
+.anchor:hover {
+    color: var(--accent);
+}
+
+.impl-block > summary {
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-secondary);
+    border-radius: 4px 4px 0 0;
+    list-style: none;
+}
+.impl-block > summary::-webkit-details-marker {
+    display: none;
+}
+
+.impl-block[open] > summary {
+    border-bottom: 1px solid var(--border);
+}
+
+.impl-header {
+    display: flex;
+    align-items: baseline;
+}
+
+.impl-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.impl-header code {
+    font-family: var(--fe-mono-font);
+    color: var(--accent);
+}
+
+.impl-content {
+    padding: 0.5rem 0.75rem;
+}
+
+fe-code-block.impl-signature {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+}
+
+/* Method items within impl blocks */
+.impl-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.method-item {
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border-left: 3px solid var(--border);
+}
+
+.method-item[open] > summary {
+    border-bottom: 1px dashed var(--border);
+}
+
+.method-header {
+    display: flex;
+    align-items: baseline;
+}
+
+.method-header h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.code-header code {
+    font-family: var(--fe-mono-font);
+    color: var(--text);
+}
+
+.method-docblock {
+    padding: 0.375rem 0.625rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Module items - rustdoc-style table layout */
+.module-items {
+    margin-top: 1rem;
+}
+
+.item-table {
+    margin-bottom: 1.25rem;
+}
+
+.item-table h2 {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.item-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: minmax(150px, max-content) 1fr;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-name a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.item-name a:hover {
+    text-decoration: underline;
+}
+
+.item-name code {
+    font-family: var(--fe-mono-font);
+    font-size: 0.875rem;
+}
+
+.item-summary {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Implementors section for traits */
+.implementors {
+    margin-top: 1.25rem;
+}
+
+.implementors h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.implementor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.implementor-item {
+    display: flex;
+    align-items: baseline;
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.impl-go {
+    font-size: 1rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-left: 0.5rem;
+}
+
+.impl-go:hover {
+    color: var(--accent);
+}
+
+.implementor-item:target,
+.implementor-item.is-target {
+    border-color: var(--accent);
+    background: var(--target-bg);
+}
+
+.implementor-sig {
+    font-family: var(--fe-mono-font);
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+/* Recursive sidebar module tree */
+.nav-module-tree {
+    margin-bottom: 0.25rem;
+}
+
+.nav-module-tree > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+.nav-module-tree > summary::-webkit-details-marker {
+    display: none;
+}
+
+.nav-module-tree > summary::before {
+    content: '\25b6';
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+    width: 0.75rem;
+    flex-shrink: 0;
+}
+
+.nav-module-tree[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.nav-module-tree > summary a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-module-tree > summary a:hover {
+    color: var(--accent);
+}
+
+.nav-module-tree > summary.current a {
+    color: var(--accent);
+}
+
+.nav-module-content {
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
+}
+
+.nav-submodules {
+    margin-top: 0.25rem;
+}
+
+/* Member items (fields, variants, methods) with anchors */
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.member-item {
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border-left: 3px solid var(--border);
+}
+
+.member-header {
+    display: flex;
+    align-items: baseline;
+}
+
+.member-header-link {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+}
+
+.member-signature {
+    font-family: var(--fe-mono-font);
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+.member-docs {
+    margin-top: 0.375rem;
+    padding-top: 0.375rem;
+    border-top: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+
+/* ============================================================================
+   Navigable items: consolidated hover / target / is-target highlighting.
+   All items with a left border indicator share these rules. Individual
+   base styles (border-left color, background) live with each component above.
+   ============================================================================ */
+.member-item:hover,
+.method-item:hover,
+.impl-block:hover {
+    border-left-color: var(--accent);
+}
+
+.member-item:target,  .member-item.is-target,
+.method-item:target,  .method-item.is-target,
+.impl-block:target,   .impl-block.is-target {
+    border-left-color: var(--accent);
+    background: var(--target-bg);
+}
+
+/* Syntax highlighting rules live in fe-highlight.css (single source of truth).
+   Both the static site and guide/Starlight import that file. */
+
+/* <fe-code-block> custom element (light-DOM host style only).
+   Internal shadow-DOM styles (.fe-code-block-wrapper, .fe-line-numbers,
+   .fe-code-pre) are in fe-highlight.css — the single source of truth.
+   Customize via CSS custom properties:
+     --fe-code-bg, --fe-code-border, --fe-code-text,
+     --fe-code-font, --fe-code-size, --fe-code-line-height */
+fe-code-block {
+    display: block;
+    margin: 1rem 0;
+}
+
+/* <fe-search> custom element */
+.fe-search-container {
+    position: relative;
+}
+
+.fe-search-input {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.fe-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 0.25rem;
+}
+
+/* <fe-signature> custom element */
+.fe-sig {
+    font-family: var(--fe-mono-font);
+    font-size: 0.875rem;
+    white-space: pre;
+    color: var(--text);
+}
+
+/* Old mobile menu styles removed — see fe-doc-viewer component styles below */
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.sidebar-backdrop.open {
+    display: block;
+}
+
+/* Responsive: collapse sidebar on narrow viewports.
+   em-based so the breakpoint scales with the user's font-size preference
+   (browser zoom + accessibility prefs). 75em ≈ 1200px at default 16px (Bootstrap xl tier). */
+@media (max-width: 75em) {
+    .doc-layout {
+        grid-template-columns: 1fr;
+    }
+    .doc-sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        width: 280px;
+        z-index: 100;
+        transition: left 0.2s ease;
+    }
+    .doc-sidebar.open {
+        left: 0;
+    }
+    .doc-content {
+        padding: 1rem;
+        padding-top: 3rem;
+    }
+    .mobile-menu-btn {
+        display: block;
+    }
+}
+
+/* In-page section outline */
+.page-outline {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.outline-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+}
+
+.outline-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.outline-list li {
+    margin: 0.125rem 0;
+}
+
+.outline-list a {
+    display: block;
+    padding: 0.125rem 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    border-left: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.outline-list a:hover {
+    color: var(--text);
+}
+
+.outline-list a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+/* Outline hierarchy: indent impl blocks and methods */
+.outline-list li.outline-level-1 {
+    padding-left: 0.75rem;
+}
+
+.outline-list li.outline-level-1 a {
+    font-size: 0.8rem;
+}
+
+.outline-list li.outline-level-2 {
+    padding-left: 1.5rem;
+}
+
+.outline-list li.outline-level-2 a {
+    font-size: 0.75rem;
+    font-family: var(--fe-mono-font);
+}
+
+/* Doc sections (Examples, Panics, Safety, etc.) */
+.doc-section {
+    margin: 1rem 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.doc-section-badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+}
+
+.doc-section-content {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.doc-section-content p {
+    margin-bottom: 0.75rem;
+}
+
+.doc-section-content p:last-child {
+    margin-bottom: 0;
+}
+
+.doc-section-content code {
+    background: var(--code-bg);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-family: var(--fe-mono-font);
+    font-size: 0.875em;
+}
+
+/* ============================================================================
+   Focus Styles (keyboard accessibility)
+   ============================================================================ */
+:focus-visible {
+    outline: 2px solid var(--accent-color, #4a90d9);
+    outline-offset: 2px;
+}
+.nav-items a:focus-visible,
+.outline-list a:focus-visible {
+    outline-offset: -1px;
+    border-radius: 4px;
+}
+.type-link:focus-visible {
+    outline-offset: 0;
+    border-radius: 2px;
+}
+
+/* ============================================================================
+   <fe-doc-viewer> Component Styles
+   ============================================================================ */
+
+.fe-doc-viewer {
+    display: block;
+    min-height: 100vh;
+}
+
+.fe-doc-viewer-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.fe-doc-viewer-back {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.fe-doc-viewer-back:hover {
+    text-decoration: underline;
+}
+
+.fe-doc-viewer-title {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.fe-doc-viewer-layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    height: calc(100vh - 3rem);
+    width: 100%;
+}
+
+.fe-doc-viewer-sidebar {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    height: 100%;
+    overflow-y: auto;
+    width: max-content;
+    min-width: var(--fe-sidebar-min-width);
+    max-width: var(--fe-sidebar-max-width);
+}
+
+.fe-doc-viewer-sidebar .fe-doc-nav {
+    border-right: none;
+    height: auto;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.fe-doc-viewer-content {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    background: var(--bg);
+}
+
+.fe-doc-viewer-content > * {
+    max-width: var(--fe-content-max-width);
+}
+
+fe-doc-viewer, .fe-doc-viewer {
+    width: 100%;
+}
+
+.fe-doc-viewer-welcome {
+    padding: 2rem;
+}
+
+.fe-doc-viewer-not-found {
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+/* Mobile menu */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.75rem;
+    z-index: 1001;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+}
+
+.sidebar-backdrop.open {
+    display: block;
+}
+
+/* ============================================================================
+   <fe-doc-nav> Component Styles
+   ============================================================================ */
+
+.fe-doc-nav {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 0.75rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--bg-secondary);
+}
+
+.fe-doc-nav::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.fe-doc-nav::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.fe-doc-nav::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.fe-doc-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.fe-doc-nav-search {
+    margin-bottom: 0.75rem;
+}
+
+.fe-doc-nav-tree {
+    margin-top: 0.5rem;
+}
+
+.fe-nav-module {
+    margin-bottom: 0.25rem;
+}
+
+.fe-nav-module > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.fe-nav-module > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fe-nav-module > summary::before {
+    content: "\25b8\00a0";
+    font-size: 0.7em;
+    color: var(--text-muted);
+}
+
+.fe-nav-module[open] > summary::before {
+    content: "\25be\00a0";
+}
+
+.fe-nav-mod-name {
+    font-weight: var(--fe-sidebar-weight);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.fe-nav-mod-name a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.fe-nav-mod-name a:hover {
+    color: var(--accent);
+}
+
+.fe-nav-mod-name.current a {
+    color: var(--accent);
+}
+
+.fe-nav-mod-content {
+    margin-left: 0.75rem;
+    padding-left: 0.5rem;
+}
+
+.fe-nav-kind-group {
+    margin-bottom: 0.75rem;
+}
+
+.fe-nav-kind-header {
+    font-size: 0.7rem;
+    font-weight: var(--fe-sidebar-weight);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+    padding-left: 0.25rem;
+}
+
+.fe-nav-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.fe-nav-items li {
+    margin: 0.15rem 0;
+}
+
+.fe-nav-items a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.fe-nav-items a:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.fe-nav-items li.current a,
+.fe-nav-mod-name.current a {
+    font-weight: var(--fe-current-weight);
+    text-shadow: var(--fe-emphasis-text-shadow);
+}
+
+.fe-nav-items li.current a {
+    color: var(--accent);
+}
+
+.fe-nav-badge {
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    background: var(--border);
+    color: var(--text-muted);
+    text-transform: lowercase;
+    flex-shrink: 0;
+}
+
+.fe-nav-badge.struct { background: #dcfce7; color: #166534; }
+.fe-nav-badge.enum { background: #fef3c7; color: #92400e; }
+.fe-nav-badge.fn { background: #dbeafe; color: #1e40af; }
+.fe-nav-badge.trait { background: #f3e8ff; color: #7e22ce; }
+.fe-nav-badge.mod { background: #e0e7ff; color: #3730a3; }
+.fe-nav-badge.contract { background: #fed7aa; color: #9a3412; }
+.fe-nav-badge.type { background: #ccfbf1; color: #115e59; }
+.fe-nav-badge.const { background: #ede9fe; color: #5b21b6; }
+.fe-nav-badge.msg,
+.fe-nav-badge.msg_variant { background: #fce7f3; color: #9d174d; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .fe-nav-badge.struct { background: #2d4a3e; color: #7ee787; }
+    :root:not([data-theme="light"]) .fe-nav-badge.enum { background: #3d3a2d; color: #e7c77e; }
+    :root:not([data-theme="light"]) .fe-nav-badge.fn { background: #2d3a4a; color: #7eb8e7; }
+    :root:not([data-theme="light"]) .fe-nav-badge.trait { background: #4a2d4a; color: #e77ee7; }
+    :root:not([data-theme="light"]) .fe-nav-badge.mod { background: #2d2d4a; color: #9d7ee7; }
+    :root:not([data-theme="light"]) .fe-nav-badge.contract { background: #4a3d2d; color: #e7b87e; }
+    :root:not([data-theme="light"]) .fe-nav-badge.type { background: #2d4a4a; color: #7ee7e7; }
+    :root:not([data-theme="light"]) .fe-nav-badge.const { background: #3a2d4a; color: #b87ee7; }
+    :root:not([data-theme="light"]) .fe-nav-badge.msg,
+    :root:not([data-theme="light"]) .fe-nav-badge.msg_variant { background: #4a2d3a; color: #e77eae; }
+}
+:root[data-theme="dark"] .fe-nav-badge.struct { background: #2d4a3e; color: #7ee787; }
+:root[data-theme="dark"] .fe-nav-badge.enum { background: #3d3a2d; color: #e7c77e; }
+:root[data-theme="dark"] .fe-nav-badge.fn { background: #2d3a4a; color: #7eb8e7; }
+:root[data-theme="dark"] .fe-nav-badge.trait { background: #4a2d4a; color: #e77ee7; }
+:root[data-theme="dark"] .fe-nav-badge.mod { background: #2d2d4a; color: #9d7ee7; }
+:root[data-theme="dark"] .fe-nav-badge.contract { background: #4a3d2d; color: #e7b87e; }
+:root[data-theme="dark"] .fe-nav-badge.type { background: #2d4a4a; color: #7ee7e7; }
+:root[data-theme="dark"] .fe-nav-badge.const { background: #3a2d4a; color: #b87ee7; }
+:root[data-theme="dark"] .fe-nav-badge.msg,
+:root[data-theme="dark"] .fe-nav-badge.msg_variant { background: #4a2d3a; color: #e77eae; }
+
+/* Scroll offset for anchored elements (clears sticky headers) */
+.member-item[id], .impl-block[id], .method-item[id], .children-section h2[id],
+.implementor-item[id], #implementations, #trait-implementations, #implementors {
+    scroll-margin-top: 1rem;
+}
+
+/* ============================================================================
+   Responsive: mobile layout for new components
+   ============================================================================ */
+
+@media (max-width: 75em) {
+    .fe-doc-viewer-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+    }
+    .fe-doc-viewer-sidebar {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        /* Reset the desktop max-content / minmax so mobile uses a fixed width */
+        width: 280px;
+        min-width: 280px;
+        max-width: 280px;
+        height: 100vh;
+        z-index: 1000;
+        border-right: 1px solid var(--border);
+    }
+    .fe-doc-viewer-sidebar.open {
+        display: flex;
+    }
+    .mobile-menu-btn {
+        display: block;
+    }
+    .page-outline {
+        display: none;
+    }
+    .fe-doc-viewer-content {
+        padding: 1rem 0.75rem;
+        padding-top: 0.5rem;
+        overflow-x: hidden;
+        font-size: 0.9rem;
+    }
+    .fe-doc-viewer-content h1 {
+        font-size: 1.5rem;
+    }
+    .fe-doc-viewer-content h2 {
+        font-size: 1.15rem;
+        margin-top: 1.5rem;
+    }
+    .fe-doc-viewer-content .breadcrumb {
+        font-size: 0.75rem;
+    }
+    .fe-doc-viewer-content .kind-badge {
+        font-size: 0.65rem;
+    }
+    fe-code-block {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+    .member-item, .impl-block, .method-item {
+        overflow-x: auto;
+        padding: 0.5rem;
+    }
+    .impl-block summary {
+        font-size: 0.85rem;
+    }
+}

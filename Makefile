@@ -50,17 +50,16 @@ prepare-web:
 		echo "Warning: no deployment manifest found"; \
 	fi
 
-# Generate Fe documentation (docs.json, fe-web.js, index.html)
+# Generate Fe documentation assets (docs.json + viewer bundle).
+# index.html is hand-owned at web/static/api/index.html and is NOT regenerated
+# here — keeping branding/theme wiring out of generated output avoids fragile
+# post-processing and the silent breakage that comes with it.
 docs: prepare-web
 	cd contracts && fe doc -o ../web/static/api json
-	cd contracts && fe doc -o ../web/static/api bundle
-	cd contracts && fe doc -o ../web/static/api static
-	sed -i 's/Fe Docs/Bountiful Docs/g; s/Fe Documentation/Bountiful Documentation/g' web/static/api/index.html
-	sed -i 's|<link rel="stylesheet" href="fe-highlight.css">|<link rel="stylesheet" href="fe-highlight.css">\n  <link rel="stylesheet" href="../css/api-theme.css">|' web/static/api/index.html
+	cd contracts && fe doc -o ../web/static/api bundle --with-css
 
 # Remove all build artifacts
 clean:
 	rm -rf contracts/out
 	rm -rf forge-out
 	rm -rf cache
-	rm -rf web/static/api

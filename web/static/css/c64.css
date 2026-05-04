@@ -599,7 +599,7 @@ ol li::before {
 }
 
 /* ── RESPONSIVE: single column on narrow viewports ── */
-@media (max-width: 1024px) {
+@media (max-width: 1400px) {
   body {
     height: auto;
     overflow: auto;
