@@ -1022,10 +1022,8 @@ fe-code-block {
     display: block;
 }
 
-/* Responsive: collapse sidebar on narrow viewports.
-   em-based so the breakpoint scales with the user's font-size preference
-   (browser zoom + accessibility prefs). 75em ≈ 1200px at default 16px (Bootstrap xl tier). */
-@media (max-width: 75em) {
+/* Responsive: collapse sidebar on narrow viewports */
+@media (max-width: 768px) {
     .doc-layout {
         grid-template-columns: 1fr;
     }
@@ -1483,7 +1481,7 @@ fe-doc-viewer, .fe-doc-viewer {
    Responsive: mobile layout for new components
    ============================================================================ */
 
-@media (max-width: 75em) {
+@media (max-width: 768px) {
     .fe-doc-viewer-layout {
         grid-template-columns: 1fr;
         height: auto;
