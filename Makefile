@@ -63,4 +63,3 @@ clean:
 	rm -rf contracts/out
 	rm -rf forge-out
 	rm -rf cache
-	rm -rf web/static/api

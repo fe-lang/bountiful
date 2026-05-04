@@ -29,7 +29,18 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check for committed doc bundle
+        id: docs_bundle
+        run: |
+          if [ -f web/static/api/docs.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Using committed pre-built docs (skip fe download + regen)"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download Fe compiler
+        if: steps.docs_bundle.outputs.present != 'true'
         run: |
           curl -L -o fe \
             "https://github.com/argotorg/fe/releases/download/v${{ env.FE_VERSION }}/fe_linux_amd64"
@@ -38,7 +49,12 @@ jobs:
           fe --version
 
       - name: Generate docs and prepare deployment data
-        run: make docs
+        run: |
+          if [ "${{ steps.docs_bundle.outputs.present }}" = "true" ]; then
+            make prepare-web
+          else
+            make docs
+          fi
 
       - name: Install Zola
         run: |
