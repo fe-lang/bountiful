@@ -262,6 +262,10 @@
 {% block scripts %}
 <script src="{{ get_url(path='js/puzzle.js') }}"></script>
 <script>
+  const grid = document.querySelector('.c64-grid');
+  const windowPanels = Array.from(document.querySelectorAll('.c64-quadrant'));
+  let expandedWindow = null;
+
   const fallbackCopyText = (value) => {
     const input = document.createElement('input');
     input.value = value;
@@ -273,6 +277,65 @@
     document.execCommand('copy');
     document.body.removeChild(input);
   };
+
+  function getWindowLabel(panel) {
+    const activeTab = panel?.querySelector('.tab-btn.active');
+    return (activeTab?.textContent || panel?.id || 'WINDOW').trim();
+  }
+
+  function updateWindowToggle(button, expanded) {
+    const label = getWindowLabel(button.closest('.c64-quadrant'));
+    button.textContent = expanded ? '-' : '+';
+    button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    button.setAttribute('aria-label', (expanded ? 'Collapse ' : 'Expand ') + label + ' window');
+  }
+
+  function collapseExpandedWindow() {
+    if (!expandedWindow || !grid) return;
+
+    const button = expandedWindow.querySelector('[data-window-toggle]');
+    expandedWindow.classList.remove('window-expanded');
+    grid.classList.remove('has-expanded-window');
+    expandedWindow = null;
+
+    if (button) updateWindowToggle(button, false);
+  }
+
+  function expandWindow(panel) {
+    if (!panel || !grid) return;
+
+    if (expandedWindow === panel) {
+      collapseExpandedWindow();
+      return;
+    }
+
+    collapseExpandedWindow();
+    expandedWindow = panel;
+    panel.classList.add('window-expanded');
+    grid.classList.add('has-expanded-window');
+
+    const button = panel.querySelector('[data-window-toggle]');
+    if (button) updateWindowToggle(button, true);
+  }
+
+  windowPanels.forEach((panel) => {
+    const tabBar = panel.querySelector('.tab-bar');
+    if (!tabBar) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'window-toggle-btn';
+    button.dataset.windowToggle = '';
+    updateWindowToggle(button, false);
+    button.addEventListener('click', () => expandWindow(panel));
+    tabBar.appendChild(button);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && expandedWindow) {
+      collapseExpandedWindow();
+    }
+  });
 
   // Render fields and implementations below the code block
   function renderDocDetails(viewer, symbolPath) {
@@ -424,12 +487,15 @@
       btn.classList.add('active');
       document.querySelectorAll('#about .tab-panel').forEach(p => p.classList.remove('visible'));
       document.getElementById(btn.dataset.tab).classList.add('visible');
+      const toggle = document.querySelector('#about [data-window-toggle]');
+      if (toggle) updateWindowToggle(toggle, expandedWindow?.id === 'about');
     });
   });
 
   // ── FAQ links (footer + about text) ──
   function switchToFaq(e) {
     e.preventDefault();
+    collapseExpandedWindow();
     const faqTab = document.querySelector('#about .tab-btn[data-tab="faq-content"]');
     if (faqTab) faqTab.click();
     document.getElementById('about').scrollIntoView({ behavior: 'smooth' });
