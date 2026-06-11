@@ -35,7 +35,7 @@ Registry: `contracts/ingots/registry/src/lib.fe` (locking, claiming, prize payou
 Initial (unsolvable):
 ```
 index:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-value:  1  2  3  4  5  6  7  8  9 10 11 12 13 14  0 15
+value:  1  2  3  4  5  6  7  8  9 10 11 12 13 15 14  0
 ```
 
 Winning (target):
@@ -44,7 +44,7 @@ index:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
 value:  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15  0
 ```
 
-The difference: tiles 14 and 15 are swapped, empty cell at index 14 instead of 15. This is a known unsolvable configuration of the 15-puzzle.
+The difference: tiles 14 and 15 are swapped (15 sits at index 13, 14 at index 14), with the empty cell at index 15 in both states. This is a known unsolvable configuration of the 15-puzzle.
 
 ## Game contract ABI
 
@@ -94,8 +94,8 @@ interface IGame {
 }
 
 contract ExploitTest is Test {
-    // Unsolvable board: [1,2,...,14,0,15] packed as 4 bits per cell
-    uint256 constant UNSOLVABLE_BOARD = 0xF0EDCBA987654321;
+    // Unsolvable board: [1,2,...,13,15,14,0] packed as 4 bits per cell
+    uint256 constant UNSOLVABLE_BOARD = 0x0EFDCBA987654321;
 
     function test_exploit() public {
         // DummyLockValidator with false = never reverts (lock always valid)
